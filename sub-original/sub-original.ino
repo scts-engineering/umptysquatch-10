@@ -97,7 +97,6 @@ void dmpDataReady() { // start of function which sets the interrupt pin state in
   mpuInterrupt = true; // set the interrupt pin state indicator to true
 } // end of function which sets the interrupt pin state indicator to a value of the for the MPU6050
 
-
 void setup() { // start of the area to define necessary parameters of the program
 
 
@@ -126,7 +125,7 @@ void setup() { // start of the area to define necessary parameters of the progra
   // join I2C serial communication data bus
 #if I2CDEV_IMPLEMENTATION == I2CDEV_ARDUINO_WIRE // does the I2C library need the Arduino Wire library?  If so, do the following: 
   Wire.begin(); // begin communication
-  Wire.setClock(400000); // set the I2C library communication clock frequency, on the clock line, to 400000 Hertz, or 400 kiloHertz, through the Wire library
+  Wire.setClock(400000); // wz, through the Wire library
 #elif I2CDEV_IMPLEMENTATION == I2CDEV_BUILTIN_FASTWIRE // does the I2C library have a built-in wire(fast wire) system?
   Fastwire::setup(400, true); // if so, setup the fastwire system to run at a clock speed of 400 kiloHertz
 #endif // end the conditional statement
