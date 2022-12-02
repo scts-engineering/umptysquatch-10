@@ -13,4 +13,4 @@ MPU6050 gyroscope;
 
 MS5837 depthSensor;
 
-#define OUTPUT_READABLE_YAWPITCHROLL //used to see the angles detected from the MPU
+
