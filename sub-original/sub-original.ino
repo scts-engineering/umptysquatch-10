@@ -31,7 +31,7 @@ MS5837 sensor; // make object for depth sensor from MS5837 library
 
 
 #define INTERRUPT_PIN 2  // define a "keyword" which stands for "2", the interrupt pin for the MPU6050 library, needed in I2C communication
-#define LED_PIN 13 // define a "keyword" which stands for "13", the status led pin for the MPU6050 library
+#define 13 // define a "keyword" which stands for "13", the status led pin for the MPU6050 library
 bool blinkState = false; // boolean which defines whether the MPU6050 status led is on or off and set it to false
 
 
