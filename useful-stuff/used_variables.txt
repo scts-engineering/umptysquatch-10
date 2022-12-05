@@ -36,4 +36,13 @@ int ypos = analogRead(A3); // joystick y-axis analog input pin
 
 int depthsetbutton;
 
-int servoangles[];
+int servoangles[4];
+
+int maxangle = 180; //might be wrong data
+int minangle = 0;
+
+volatile bool mpuInterrupt = false;
+
+void dmpDataReady() {
+  mpuInterrupt = true;
+}
