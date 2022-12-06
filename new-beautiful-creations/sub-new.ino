@@ -182,6 +182,7 @@ void loop() {
         mpu.dmpGetYawPitchRoll(ypr, &q, &gravity);
     }
 
+    // setting the servo angles
     float x = (analogRead(xjoystick) - 512) / 512.0f;
     float y = (analogRead(yjoystick) - 512) / 512.0f;
 
@@ -206,8 +207,64 @@ void loop() {
         servoangles[i] = round(servoangles[i]);
 
         setServo(servos[i], servoangles[i]);
-
     }
 
+    // TODO: figure out whether we need the vertical depth offset stuff
 
+    //automatic tilt bouyancy system
+
+    if (digitalRead(extrabutton1) == LOW) { // auto bouyancy is on
+
+        roll = (ypr[2] * 180 / M_PI);
+
+        if ((roll) < 2.5 and (roll) > -2.5) {
+
+            digitalWrite(pumpa, LOW);
+            digitalWrite(pumpb, LOW);
+        }
+
+        if ((roll) > 2.5) {
+
+            digitalWrite(pumpa, HIGH);
+            digitalWrite(pumpb, LOW);
+        }
+
+        if ((roll) < -2.5) {
+
+            digitalWrite(pumpa, LOW);
+            digitalWrite(pumpb, HIGH);
+        }
+
+    } else { // auto bouyancy is off
+
+        if (digitalRead(modebutton) == LOW) { // mode button is switched to manual pump control
+
+            if (upbutton == HIGH) {
+
+                digitalWrite(pumpa, HIGH);
+                digitalWrite(pumpb, LOW);
+            }
+
+            if (downbutton == HIGH) {
+
+                digitalWrite(pumpa, LOW);
+                digitalWrite(pumpb, HIGH);
+            }
+        }
+
+        if (digitalRead(modebutton) == HIGH) { // mode button is switched to manual actuator control
+
+            if (upbutton == HIGH) {
+
+                digitalWrite(acta, HIGH);
+                digitalWrite(actb, LOW);
+            }
+
+            if (downbutton == HIGH) {
+
+                digitalWrite(acta, LOW);
+                digitalWrite(actb, HIGH);
+            }
+        }
+    }
 }
