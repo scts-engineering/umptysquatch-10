@@ -8,6 +8,7 @@
 #endif
 
 #define INTERRUPT_PIN 2
+#define arraylength(x) (sizeof(x) / sizeof((x)[0]))
 
 Servo servos[4];
 
@@ -41,8 +42,8 @@ int acta = 8; // add air to ballast actuator pin
 int actb = 7; // release air from ballast actuator pin
 int pumpa = 11; // fore pump pin
 int pumpb = 10; // aft pump pin
-int xpos = analogRead(A2); // joystick x-axis analog input pin
-int ypos = analogRead(A3); // joystick y-axis analog input pin
+int xjoystick = A2; // joystick x input
+int yjoystick = A3; // joystick y input
 
 int depthsetbutton;
 
@@ -55,6 +56,14 @@ volatile bool mpuInterrupt = false;
 
 void dmpDataReady() {
     mpuInterrupt = true;
+}
+
+void setServos(Servo servo, float degrees) {
+
+    float microseconds = degrees * 9.9 + 870
+
+    servo.writeMicroseconds(microseconds);
+
 }
 
 void setup() {
@@ -72,6 +81,8 @@ void setup() {
     pinMode(acta, OUTPUT);
     pinMode(actb, OUTPUT);
     pinMode(INTERRUPT_PIN, INPUT); //TODO: It may need to be put after mpu initialization to work
+    pinMode(xjoystick, INPUT);
+    pinMode(yjoystick, INPUT);
 
     //set the servos to recieve pin input
     servos[0].attach(9);
@@ -140,5 +151,63 @@ void loop() {
     // reset interrupt flag and get INT_STATUS byte
     mpuInterrupt = false;
     mpuIntStatus = mpu.getIntStatus();
-}
 
+    fifoCount = mpu.getFIFOCount();
+
+    //TODO: See if the following is correct
+    // check for overflow (this should never happen unless our code is too inefficient)
+    if ((mpuIntStatus & _BV(MPU6050_INTERRUPT_FIFO_OFLOW_BIT)) || fifoCount >= 1024) {
+        // reset so we can continue cleanly
+        mpu.resetFIFO();
+        fifoCount = mpu.getFIFOCount();
+
+
+        // otherwise, check for DMP data ready interrupt (this should happen frequently)
+    } else if (mpuIntStatus & _BV(MPU6050_INTERRUPT_DMP_INT_BIT)) {
+        // wait for correct available data length, should be a VERY short wait
+        while (fifoCount < packetSize) fifoCount = mpu.getFIFOCount();
+
+
+        // read a packet from FIFO
+        mpu.getFIFOBytes(fifoBuffer, packetSize);
+
+
+        // track FIFO count here in case there is > 1 packet available
+        // (this lets us immediately read more without waiting for an interrupt)
+        fifoCount -= packetSize;
+
+        // display Euler angles in degrees
+        mpu.dmpGetQuaternion(&q, fifoBuffer);
+        mpu.dmpGetGravity(&gravity, &q);
+        mpu.dmpGetYawPitchRoll(ypr, &q, &gravity);
+    }
+
+    float x = (analogRead(xjoystick) - 512) / 512.0f;
+    float y = (analogRead(yjoystick) - 512) / 512.0f;
+
+    int deadmin = 85;
+    int deadmax = 95;
+
+    float servoangles[0] = (atan(x - y) * -180 / PI) + 90;
+    float servoangles[1] = (atan(x + y) * -180 / PI) + 90;
+    float servoangles[2] = (atan(y - x) * -180 / PI) + 90;
+    float servoangles[3] = (atan(x + y) * 180 / PI) + 90;
+
+    for (int i = 0, i < arraylength(servos), i++ ) {
+
+        if (servoangles[i] > maxangle){
+            servoangles[i] = maxangle;
+        } else if (servoangles[i] < minangle) {
+            servoangles[i] = minangle;
+        }
+
+        if (servoangles[i] > deadmin && servosangles[i] < deadmax) servoangles[i] = 90;
+
+        servoangles[i] = round(servoangles[i]);
+
+        setServo(servos[i], servoangles[i]);
+
+    }
+
+
+}
