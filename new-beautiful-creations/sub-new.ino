@@ -7,8 +7,20 @@
 #include "Wire.h"
 #endif
 
-#define INTERRUPT_PIN 2
 #define arraylength(x) (sizeof(x) / sizeof((x)[0]))
+
+#define INTERRUPT_PIN 2
+#define UP_BUTTON_PIN 4
+#define DOWN_BUTTON_PIN A1
+#define MODE_BUTTON_PIN A0
+#define EXTRA_BUTTON_1_PIN 13
+#define DEPTH_LED_PIN 0
+#define ACTUATOR_A_PIN 8
+#define ACTUATOR_B_PIN 7
+#define PUMP_A_PIN 11
+#define PUMP_B_PIN 10
+#define JOYSTICK_X_PIN A2
+#define JOYSTICK_Y_PIN A3
 
 Servo servos[4];
 
@@ -16,41 +28,8 @@ MPU6050 gyroscope;
 
 MS5837 depthSensor;
 
-bool dmpReady = false;
 uint8_t mpuIntStatus;
-uint8_t devStatus;
 uint16_t packetSize;
-uint16_t fifoCount;
-uint8_t fifoBuffer
-
-Quaternion q;
-VectorFloat gravity;
-float ypr[3];
-
-float roll;
-int holddepth;
-int depth;
-
-int depthled = 0; // depth level indicator led pin
-int depthbutton = 1; // depth set button pin
-int upbutton = 4; // add air to ballast tank/add water to fore trim tank pin
-int downbutton = A1; // release air from ballast tank/add water to aft trim tank pin
-int modebutton = A0; // change manual control mode pin
-int extrabutton1 = 12; // extra button one pin
-int extrabutton2 = 13; // extra button two pin
-int acta = 8; // add air to ballast actuator pin
-int actb = 7; // release air from ballast actuator pin
-int pumpa = 11; // fore pump pin
-int pumpb = 10; // aft pump pin
-int xjoystick = A2; // joystick x input
-int yjoystick = A3; // joystick y input
-
-int depthsetbutton;
-
-int servoangles[4];
-
-int maxangle = 135; //maximum angle needed for x-pattern
-int minangle = 45; //minimum angle needed for x-pattern
 
 volatile bool mpuInterrupt = false;
 
@@ -68,21 +47,22 @@ void setServos(Servo servo, float degrees) {
 
 void setup() {
 
+    bool dmpReady = false;
+    uint8_t devStatus;
+
     //set the pins to be either an input, or output
-    pinMode(depthbutton, INPUT);
-    pinMode(upbutton, INPUT);
-    pinMode(downbutton, INPUT);
-    pinMode(modebutton, INPUT);
-    pinMode(extrabutton1, INPUT);
-    pinMode(extrabutton2, INPUT);
-    pinMode(depthled, OUTPUT);
-    pinMode(pumpa, OUTPUT);
-    pinMode(pumpb, OUTPUT);
-    pinMode(acta, OUTPUT);
-    pinMode(actb, OUTPUT);
+    pinMode(UP_BUTTON_PIN, INPUT);
+    pinMode(DOWN_BUTTON_PIN, INPUT);
+    pinMode(MODE_BUTTON_PIN, INPUT);
+    pinMode(EXTRA_BUTTON_1, INPUT);
+    pinMode(DEPTH_LED_PIN, OUTPUT);
+    pinMode(PUMP_A_PIN, OUTPUT);
+    pinMode(PUMP_B_PIN, OUTPUT);
+    pinMode(ACTUATOR_A_PIN, OUTPUT);
+    pinMode(ACTUATOR_B_PIN, OUTPUT);
     pinMode(INTERRUPT_PIN, INPUT); //TODO: It may need to be put after mpu initialization to work
-    pinMode(xjoystick, INPUT);
-    pinMode(yjoystick, INPUT);
+    pinMode(JOYSTICK_X_PIN, INPUT);
+    pinMode(JOYSTICK_Y_PIN, INPUT);
 
     //set the servos to recieve pin input
     servos[0].attach(9);
@@ -100,43 +80,53 @@ void setup() {
 
     //TODO: set baud rate
 
-    mpu.initialize();
+    gyroscope.initialize();
 
     //TODO: have a timeout and error message if initilization fails
-    if (!sensor.init()) {
+    if (!depthSensor.init()) {
         delay(1000);
     }
 
-    sensor.setModel(MS5837::MS5837_30BA); // set depth sensor model to the MS5837, 30 bar
-    sensor.setFluidDensity(997); // set fluid density to 997 kilograms per meter cubed (freshwater)
+    depthSensor.setModel(MS5837::MS5837_30BA); // set depth sensor model to the MS5837, 30 bar
+    depthSensor.setFluidDensity(997); // set fluid density to 997 kilograms per meter cubed (freshwater)
 
     //load and configure the DMP
-    devStatus = mpu.dmpInitialize();
+    devStatus = gyroscope.dmpInitialize();
 
     //TODO: see if these offsets need to be changed for maximum accuracy
-    mpu.setXGyroOffset(220);
-    mpu.setYGyroOffset(76);
-    mpu.setZGyroOffset(-85);
-    mpu.setZAccelOffset(1788);
+    gyroscope.setXGyroOffset(220);
+    gyroscope.setYGyroOffset(76);
+    gyroscope.setZGyroOffset(-85);
+    gyroscope.setZAccelOffset(1788);
 
     //TODO: have error message if initialization fails
     if (devStatus == 0) {
 
         //TODO: Might need gyro calibration methods if results are off
 
-        mpu.setDMPEnabled(true);
+        gyroscope.setDMPEnabled(true);
 
         //enable Arduino interrupt detection
         attachInterrupt(digitalPinToInterrupt(INTERRUPT_PIN), dmpDataReady, RISING);
-        mpuIntStatus = mpu.getIntStatus();
+        mpuIntStatus = gyroscope.getIntStatus();
 
         dmpReady = true; //allows the main loop method to run
 
-        packetSize = mpu.dmpGetFIFOPacketSize();
+        packetSize = gyroscope.dmpGetFIFOPacketSize();
     }
 }
 
 void loop() {
+
+    uint16_t fifoCount;
+    uint8_t fifoBuffer;
+    float roll;
+    float ypr[3];
+    float servoangles[4];
+
+    Quaternion q;
+    VectorFloat gravity;
+
 
     //TODO: create error message if setup fails (dmpReady)
 
@@ -144,32 +134,32 @@ void loop() {
     while (!mpuInterrupt && fifoCount < packetSize) {
         if (mpuInterrupt && fifoCount < packetSize) {
           // try to get out of the infinite loop
-          fifoCount = mpu.getFIFOCount();
+          fifoCount = gyroscope.getFIFOCount();
         }
     }
 
     // reset interrupt flag and get INT_STATUS byte
     mpuInterrupt = false;
-    mpuIntStatus = mpu.getIntStatus();
+    mpuIntStatus = gyroscope.getIntStatus();
 
-    fifoCount = mpu.getFIFOCount();
+    fifoCount = gyroscope.getFIFOCount();
 
     //TODO: See if the following is correct
     // check for overflow (this should never happen unless our code is too inefficient)
     if ((mpuIntStatus & _BV(MPU6050_INTERRUPT_FIFO_OFLOW_BIT)) || fifoCount >= 1024) {
         // reset so we can continue cleanly
-        mpu.resetFIFO();
-        fifoCount = mpu.getFIFOCount();
+        gyroscope.resetFIFO();
+        fifoCount = gyroscope.getFIFOCount();
 
 
         // otherwise, check for DMP data ready interrupt (this should happen frequently)
     } else if (mpuIntStatus & _BV(MPU6050_INTERRUPT_DMP_INT_BIT)) {
         // wait for correct available data length, should be a VERY short wait
-        while (fifoCount < packetSize) fifoCount = mpu.getFIFOCount();
+        while (fifoCount < packetSize) fifoCount = gyroscope.getFIFOCount();
 
 
         // read a packet from FIFO
-        mpu.getFIFOBytes(fifoBuffer, packetSize);
+        gyroscope.getFIFOBytes(fifoBuffer, packetSize);
 
 
         // track FIFO count here in case there is > 1 packet available
@@ -177,22 +167,24 @@ void loop() {
         fifoCount -= packetSize;
 
         // display Euler angles in degrees
-        mpu.dmpGetQuaternion(&q, fifoBuffer);
-        mpu.dmpGetGravity(&gravity, &q);
-        mpu.dmpGetYawPitchRoll(ypr, &q, &gravity);
+        gyroscope.dmpGetQuaternion(&q, fifoBuffer);
+        gyroscope.dmpGetGravity(&gravity, &q);
+        gyroscope.dmpGetYawPitchRoll(ypr, &q, &gravity);
     }
 
     // setting the servo angles
-    float x = (analogRead(xjoystick) - 512) / 512.0f;
-    float y = (analogRead(yjoystick) - 512) / 512.0f;
+    float x = (analogRead(JOYSTICK_X_PIN) - 512) / 512.0f;
+    float y = (analogRead(JOYSTICK_Y_PIN) - 512) / 512.0f;
 
     int deadmin = 85;
     int deadmax = 95;
+    int minangle = 45; //minimum angle required for x-pattern
+    int maxangle = 135; //maximum angle required for x-pattern
 
-    float servoangles[0] = (atan(x - y) * -180 / PI) + 90;
-    float servoangles[1] = (atan(x + y) * -180 / PI) + 90;
-    float servoangles[2] = (atan(y - x) * -180 / PI) + 90;
-    float servoangles[3] = (atan(x + y) * 180 / PI) + 90;
+    servoangles[0] = (atan(x - y) * -180 / PI) + 90;
+    servoangles[1] = (atan(x + y) * -180 / PI) + 90;
+    servoangles[2] = (atan(y - x) * -180 / PI) + 90;
+    servoangles[3] = (atan(x + y) * 180 / PI) + 90;
 
     for (int i = 0, i < arraylength(servos), i++ ) {
 
@@ -213,57 +205,57 @@ void loop() {
 
     //automatic tilt bouyancy system
 
-    if (digitalRead(extrabutton1) == LOW) { // auto bouyancy is on
+    if (digitalRead(EXTRA_BUTTON_1) == LOW) { // auto bouyancy is on
 
         roll = (ypr[2] * 180 / M_PI);
 
         if ((roll) < 2.5 and (roll) > -2.5) {
 
-            digitalWrite(pumpa, LOW);
-            digitalWrite(pumpb, LOW);
+            digitalWrite(PUMP_A_PIN, LOW);
+            digitalWrite(PUMP_B_PIN, LOW);
         }
 
         if ((roll) > 2.5) {
 
-            digitalWrite(pumpa, HIGH);
-            digitalWrite(pumpb, LOW);
+            digitalWrite(PUMP_A_PIN, HIGH);
+            digitalWrite(PUMP_B_PIN, LOW);
         }
 
         if ((roll) < -2.5) {
 
-            digitalWrite(pumpa, LOW);
-            digitalWrite(pumpb, HIGH);
+            digitalWrite(PUMP_A_PIN, LOW);
+            digitalWrite(PUMP_B_PIN, HIGH);
         }
 
     } else { // auto bouyancy is off
 
-        if (digitalRead(modebutton) == LOW) { // mode button is switched to manual pump control
+        if (digitalRead(MODE_BUTTON_PIN) == LOW) { // mode button is switched to manual pump control
 
-            if (upbutton == HIGH) {
+            if (UP_BUTTON_PIN == HIGH) {
 
-                digitalWrite(pumpa, HIGH);
-                digitalWrite(pumpb, LOW);
+                digitalWrite(PUMP_A_PIN, HIGH);
+                digitalWrite(PUMP_B_PIN, LOW);
             }
 
-            if (downbutton == HIGH) {
+            if (DOWN_BUTTON_PIN == HIGH) {
 
-                digitalWrite(pumpa, LOW);
-                digitalWrite(pumpb, HIGH);
+                digitalWrite(PUMP_A_PIN, LOW);
+                digitalWrite(PUMP_B_PIN, HIGH);
             }
         }
 
-        if (digitalRead(modebutton) == HIGH) { // mode button is switched to manual actuator control
+        if (digitalRead(MODE_BUTTON_PIN) == HIGH) { // mode button is switched to manual actuator control
 
-            if (upbutton == HIGH) {
+            if (UP_BUTTON_PIN == HIGH) {
 
-                digitalWrite(acta, HIGH);
-                digitalWrite(actb, LOW);
+                digitalWrite(ACTUATOR_A_PIN, HIGH);
+                digitalWrite(ACTUATOR_B_PIN, LOW);
             }
 
-            if (downbutton == HIGH) {
+            if (DOWN_BUTTON_PIN == HIGH) {
 
-                digitalWrite(acta, LOW);
-                digitalWrite(actb, HIGH);
+                digitalWrite(ACTUATOR_A_PIN, LOW);
+                digitalWrite(ACTUATOR_B_PIN, HIGH);
             }
         }
     }
