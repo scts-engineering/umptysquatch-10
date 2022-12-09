@@ -30,6 +30,7 @@ MS5837 depthSensor;
 
 uint8_t mpuIntStatus;
 uint16_t packetSize;
+float ypr[3];
 
 volatile bool mpuInterrupt = false;
 
@@ -37,18 +38,7 @@ void dmpDataReady() {
     mpuInterrupt = true;
 }
 
-void setServos(Servo servo, float degrees) {
-
-    float microseconds = degrees * 9.9 + 870
-
-    servo.writeMicroseconds(microseconds);
-
-}
-
-void setup() {
-
-    bool dmpReady = false;
-    uint8_t devStatus;
+void setPinModes() {
 
     //set the pins to be either an input, or output
     pinMode(UP_BUTTON_PIN, INPUT);
@@ -63,70 +53,32 @@ void setup() {
     pinMode(INTERRUPT_PIN, INPUT); //TODO: It may need to be put after mpu initialization to work
     pinMode(JOYSTICK_X_PIN, INPUT);
     pinMode(JOYSTICK_Y_PIN, INPUT);
+}
+
+void attachServos() {
 
     //set the servos to recieve pin input
     servos[0].attach(9);
     servos[1].attach(6);
     servos[2].attach(5);
     servos[3].attach(3);
-
-    // join I2C bus (I2Cdev library doesn't do this automatically)
-    #if I2CDEV_IMPLEMENTATION == I2CDEV_ARDUINO_WIRE
-        Wire.begin();
-        Wire.setClock(400000); // 400kHz I2C clock. Comment this line if having compilation difficulties
-    #elif I2CDEV_IMPLEMENTATION == I2CDEV_BUILTIN_FASTWIRE
-        Fastwire::setup(400, true);
-    #endif
-
-    //TODO: set baud rate
-
-    gyroscope.initialize();
-
-    //TODO: have a timeout and error message if initilization fails
-    if (!depthSensor.init()) {
-        delay(1000);
-    }
-
-    depthSensor.setModel(MS5837::MS5837_30BA); // set depth sensor model to the MS5837, 30 bar
-    depthSensor.setFluidDensity(997); // set fluid density to 997 kilograms per meter cubed (freshwater)
-
-    //load and configure the DMP
-    devStatus = gyroscope.dmpInitialize();
-
-    //TODO: see if these offsets need to be changed for maximum accuracy
-    gyroscope.setXGyroOffset(220);
-    gyroscope.setYGyroOffset(76);
-    gyroscope.setZGyroOffset(-85);
-    gyroscope.setZAccelOffset(1788);
-
-    //TODO: have error message if initialization fails
-    if (devStatus == 0) {
-
-        //TODO: Might need gyro calibration methods if results are off
-
-        gyroscope.setDMPEnabled(true);
-
-        //enable Arduino interrupt detection
-        attachInterrupt(digitalPinToInterrupt(INTERRUPT_PIN), dmpDataReady, RISING);
-        mpuIntStatus = gyroscope.getIntStatus();
-
-        dmpReady = true; //allows the main loop method to run
-
-        packetSize = gyroscope.dmpGetFIFOPacketSize();
-    }
 }
 
-void loop() {
+void setServo(Servo servo, float degrees) {
+
+    float microseconds = degrees * 9.9 + 870
+
+    servo.writeMicroseconds(microseconds);
+
+}
+
+void processGyroData() {
 
     uint16_t fifoCount;
     uint8_t fifoBuffer;
-    float roll;
-    float ypr[3];
-    float servoangles[4];
 
     Quaternion q;
     VectorFloat gravity;
-
 
     //TODO: create error message if setup fails (dmpReady)
 
@@ -171,8 +123,12 @@ void loop() {
         gyroscope.dmpGetGravity(&gravity, &q);
         gyroscope.dmpGetYawPitchRoll(ypr, &q, &gravity);
     }
+}
 
-    // setting the servo angles
+void processSteering() { // read the joystick, then set the servo angles
+
+    float servoangles[4];
+
     float x = (analogRead(JOYSTICK_X_PIN) - 512) / 512.0f;
     float y = (analogRead(JOYSTICK_Y_PIN) - 512) / 512.0f;
 
@@ -200,6 +156,11 @@ void loop() {
 
         setServo(servos[i], servoangles[i]);
     }
+}
+
+void processButtonInput() {
+
+    float roll;
 
     // TODO: figure out whether we need the vertical depth offset stuff
 
@@ -259,4 +220,68 @@ void loop() {
             }
         }
     }
+}
+
+void setup() {
+
+    bool dmpReady = false;
+    uint8_t devStatus;
+
+    setPinModes();
+
+    attachServos();
+
+    // join I2C bus (I2Cdev library doesn't do this automatically)
+    #if I2CDEV_IMPLEMENTATION == I2CDEV_ARDUINO_WIRE
+        Wire.begin();
+        Wire.setClock(400000); // 400kHz I2C clock. Comment this line if having compilation difficulties
+    #elif I2CDEV_IMPLEMENTATION == I2CDEV_BUILTIN_FASTWIRE
+        Fastwire::setup(400, true);
+    #endif
+
+    //TODO: set baud rate
+
+    gyroscope.initialize();
+
+    //TODO: have a timeout and error message if initilization fails
+    if (!depthSensor.init()) {
+        delay(1000);
+    }
+
+    depthSensor.setModel(MS5837::MS5837_30BA); // set depth sensor model to the MS5837, 30 bar
+    depthSensor.setFluidDensity(997); // set fluid density to 997 kilograms per meter cubed (freshwater)
+
+    //load and configure the DMP
+    devStatus = gyroscope.dmpInitialize();
+
+    //TODO: see if these offsets need to be changed for maximum accuracy
+    gyroscope.setXGyroOffset(220);
+    gyroscope.setYGyroOffset(76);
+    gyroscope.setZGyroOffset(-85);
+    gyroscope.setZAccelOffset(1788);
+
+    //TODO: have error message if initialization fails
+    if (devStatus == 0) {
+
+        //TODO: Might need gyro calibration methods if results are off
+
+        gyroscope.setDMPEnabled(true);
+
+        //enable Arduino interrupt detection
+        attachInterrupt(digitalPinToInterrupt(INTERRUPT_PIN), dmpDataReady, RISING);
+        mpuIntStatus = gyroscope.getIntStatus();
+
+        dmpReady = true; //allows the main loop method to run
+
+        packetSize = gyroscope.dmpGetFIFOPacketSize();
+    }
+}
+
+void loop() {
+
+    processGyroData();
+
+    processSteering();
+
+    processButtonInput();
 }
