@@ -121,7 +121,8 @@
       "track_widths": [
         0.0,
         0.5,
-        1.5
+        1.5,
+        3.5
       ],
       "via_dimensions": [
         {
@@ -380,7 +381,7 @@
     "last_paths": {
       "gencad": "",
       "idf": "",
-      "netlist": "",
+      "netlist": "new_electronics.net",
       "specctra_dsn": "",
       "step": "",
       "vrml": ""
