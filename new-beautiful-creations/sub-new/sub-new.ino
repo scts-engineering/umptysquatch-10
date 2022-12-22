@@ -41,6 +41,7 @@ volatile bool mpuInterrupt = false;
 
 void dmpDataReady() {
     mpuInterrupt = true;
+    //Serial.println("dmp data ready called");
 }
 
 void setPinModes() {
@@ -49,7 +50,7 @@ void setPinModes() {
     pinMode(UP_BUTTON_PIN, INPUT);
     pinMode(DOWN_BUTTON_PIN, INPUT);
     pinMode(MODE_BUTTON_PIN, INPUT);
-    pinMode(EXTRA_BUTTON_1, INPUT);
+    pinMode(EXTRA_BUTTON_1_PIN, INPUT);
     pinMode(DEPTH_LED_PIN, OUTPUT);
     pinMode(PUMP_A_PIN, OUTPUT);
     pinMode(PUMP_B_PIN, OUTPUT);
@@ -119,7 +120,7 @@ void setupGyro() {
 
 void setServo(Servo servo, float degrees) {
 
-    float microseconds = degrees * 9.9 + 870
+    float microseconds = degrees * 9.9 + 870;
 
     servo.writeMicroseconds(microseconds);
 }
@@ -131,18 +132,17 @@ void processGyroData() {
 
     Quaternion q;
     VectorFloat gravity;
-
+ 
     //TODO: create error message if setup fails (dmpReady)
 
     //while loop copied from mr jrowberg
-    while (!mpuInterrupt && fifoCount < packetSize) {
+   while (!mpuInterrupt && fifoCount < packetSize) {
         if (mpuInterrupt && fifoCount < packetSize) {
           // try to get out of the infinite loop
           fifoCount = gyroscope.getFIFOCount();
         }
     }
-
-    // reset interrupt flag and get INT_STATUS byte
+   // reset interrupt flag and get INT_STATUS byte
     mpuInterrupt = false;
     mpuIntStatus = gyroscope.getIntStatus();
 
@@ -157,11 +157,11 @@ void processGyroData() {
 
         // otherwise, check for DMP data ready interrupt (this should happen frequently)
     } else if (mpuIntStatus & _BV(MPU6050_INTERRUPT_DMP_INT_BIT)) {
-        // wait for correct available data length, should be a VERY short wait
+       // wait for correct available data length, should be a VERY short wait
         while (fifoCount < packetSize) fifoCount = gyroscope.getFIFOCount();
 
-        // read a packet from FIFO
-        gyroscope.getFIFOBytes(fifoBuffer, packetSize);
+       /* // read a packet from FIFO
+        gyroscope.getFIFOBytes(fifoBuffer, packetSize);*/
 
         // track FIFO count here in case there is > 1 packet available
         // (this lets us immediately read more without waiting for an interrupt)
@@ -191,7 +191,7 @@ void processSteering() { // read the joystick, then set the servo angles
     servoAngles[2] = (atan(y - x) * -180 / PI) + 90;
     servoAngles[3] = (atan(x + y) * 180 / PI) + 90;
 
-    for (int i = 0, i < arraylength(servos), i++ ) {
+    for (int i = 0; i < arraylength(servos); i++ ) {
 
         if (servoAngles[i] > maxAngle){
             servoAngles[i] = maxAngle;
@@ -199,10 +199,14 @@ void processSteering() { // read the joystick, then set the servo angles
             servoAngles[i] = minAngle;
         }
 
-        if (servoAngles[i] > deadMin && servosangles[i] < deadMax) servoAngles[i] = 90;
+        if (servoAngles[i] > deadMin && servoAngles[i] < deadMax) servoAngles[i] = 90;
 
         servoAngles[i] = round(servoAngles[i]);
 
+        Serial.print("Setting servo ");
+        Serial.print(i);
+        Serial.print(" to ");
+        Serial.println(servoAngles[i]);
         setServo(servos[i], servoAngles[i]);
     }
 }
@@ -215,7 +219,7 @@ void processButtonInput() {
 
     //automatic tilt bouyancy system
 
-    if (digitalRead(EXTRA_BUTTON_1) == LOW) { // auto bouyancy is on
+    if (digitalRead(EXTRA_BUTTON_1_PIN) == LOW) { // auto bouyancy is on
 
         roll = (ypr[2] * 180 / M_PI);
 
@@ -272,10 +276,11 @@ void processButtonInput() {
 }
 
 void setup() {
+  Serial.begin(9600);
 
     setPinModes();
 
-    setupGyro();
+   setupGyro();
 }
 
 void loop() {
