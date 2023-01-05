@@ -88,7 +88,7 @@ void setupGyro() {
         delay(1000);
     }
 
-    depthSensor.setModel(MS5837::MS5837_30BA); // set depth sensor model to the MS5837, 30 bar
+    // depthSensor.setModel(MS5837::MS5837_30BA); // set depth sensor model to the MS5837, 30 bar
     depthSensor.setFluidDensity(997); // set fluid density to 997 kilograms per meter cubed (freshwater)
 
     //load and configure the DMP
@@ -127,7 +127,7 @@ void setServo(Servo servo, float degrees) {
 void processGyroData() {
 
     uint16_t fifoCount;
-    uint8_t fifoBuffer;
+    uint8_t fifoBuffer[64];
 
     Quaternion q;
     VectorFloat gravity;
@@ -207,11 +207,17 @@ void processSteering() { // read the joystick, then set the servo angles
     }
 }
 
+void processDepthInput() {
+    depthSensor.read();
+    Serial.print(sensor.pressure());
+    Serial.print(sensor.depth());
+}
+
 void processButtonInput() {
 
     float roll;
 
-    // TODO: figure out whether we need the vertical depth offset stuff
+    // TODO: see if we can free a spot for a depth set button (to maintain a depth automatically)
 
     //automatic tilt bouyancy system
 
@@ -283,6 +289,8 @@ void loop() {
     processGyroData();
 
     processSteering();
+
+    processDepthInput();
 
     processButtonInput();
 }
