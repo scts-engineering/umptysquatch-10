@@ -19,7 +19,8 @@ public class PositionGetter {
     }
     
     public void tick() {
-        if(s.hasNextLine()) {
+        try {
+	if(s.hasNextLine()) {
             String str = s.nextLine();
             String[] coordsStrs = str.split(" ");
             System.out.println("Got " + coordsStrs[0] + " and " + coordsStrs[1]);
@@ -28,5 +29,8 @@ public class PositionGetter {
             System.out.println("X: " + x +  ", Y: " + y);
             this.position = new Vector3f(x, y, 0);
         }
+	} catch(Exception e) {
+		e.printStackTrace();
+	}
     }
 }

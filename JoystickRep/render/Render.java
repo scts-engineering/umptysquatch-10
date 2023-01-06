@@ -17,7 +17,6 @@ public class Render {
 
     ShaderTextured shader = new ShaderTextured();
     
-    PositionGetter pGetter = new PositionGetter();
 
     float angle = 0;
 
@@ -27,14 +26,14 @@ public class Render {
         GL11.glClear(GL11.GL_COLOR_BUFFER_BIT | GL11.GL_DEPTH_BUFFER_BIT);
     }
 
-    public void render(Mesh mesh) {
+    public void render(Mesh mesh, Vector3f position) {
 
 
         shader.start();
 
         shader.setProjection(Main.window.getProjectionMatrix());
 
-        shader.setTransformation(Maths.createTransformationMatrix(pGetter.getPosition(), 0, 0, 0, 1));
+        shader.setTransformation(Maths.createTransformationMatrix(position, 0, 0, 0, 1));
 
         GL30.glBindVertexArray(mesh.getVaoID());
         GL20.glEnableVertexAttribArray(0); //allows the vertex positions to be drawn

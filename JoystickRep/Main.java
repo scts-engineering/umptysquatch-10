@@ -48,7 +48,7 @@ public class Main {
             
             pGetter.tick();
 
-            render.render(mesh);
+            render.render(mesh, pGetter.getPosition());
 
 			window.update();
 
