@@ -23,6 +23,7 @@ public class PositionGetter {
 	if(s.hasNextLine()) {
             String str = s.nextLine();
             String[] coordsStrs = str.split(" ");
+	    System.out.println("Coordsstrs length " + coordsStrs.length);
             System.out.println("Got " + coordsStrs[0] + " and " + coordsStrs[1]);
             float x = Float.parseFloat(coordsStrs[0]);
             float y = Float.parseFloat(coordsStrs[1]);

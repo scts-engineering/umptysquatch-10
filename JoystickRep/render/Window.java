@@ -36,6 +36,8 @@ public class Window {
 
     }
 
+    private static int MAX_MIN_DIM = 50000;
+
     private void init(int width, int height){
 
         this.width = width;
@@ -118,7 +120,7 @@ public class Window {
     //note that this only works for 2d shapes
     public Matrix4f getProjectionMatrix() {
 
-        Matrix4f matrix = new Matrix4f().ortho2D(-3000, 3000, -3000, 3000);
+        Matrix4f matrix = new Matrix4f().ortho2D(-MAX_MIN_DIM, MAX_MIN_DIM, -MAX_MIN_DIM, MAX_MIN_DIM);
 
         return matrix;
 

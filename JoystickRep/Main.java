@@ -19,13 +19,15 @@ public class Main {
 
 	}
 
+
+	private static final int SCALE = 10;
 	private void loop() {
 
 		//set the vertices and indices of the desired shape to be drawn to the screen
-		float[] vertices1 = {-100f,-100f,0f,
-                100f,-100f,0f,
-                100f,100f,0f,
-                -100f,100f,0f};
+		float[] vertices1 = {-100f*SCALE,-100f*SCALE,0f,
+                100f*SCALE,-100f*SCALE,0f,
+                100f*SCALE,100f*SCALE,0f,
+                -100f*SCALE,100f*SCALE,0f};
 
         int[] indices = {0,1,2,0,3,2};
 
