@@ -2,6 +2,7 @@
 #include "MPU6050_6Axis_MotionApps20.h"
 #include "MS5837.h"
 #include "Servo.h"
+#include "Sodaq_LSM303AGR.h"
 
 #if I2CDEV_IMPLEMENTATION == I2CDEV_ARDUINO_WIRE // copied from mr jrowberg, guess it only imports the wire library if it needs it
 #include "Wire.h"
@@ -27,7 +28,16 @@
 #define SERVO_4_PIN 3
 
 
+#define USE_MAGNET_JOYSTICK
+//#define ENABLE_AUTO_PUMPS
+
+//#define DEBUG
+
 Servo servos[4];
+
+#ifdef USE_MAGNET_JOYSTICK
+Sodaq_LSM303AGR magnetometer;
+#endif
 
 MPU6050 gyroscope;
 
@@ -135,51 +145,46 @@ void processGyroData() {
  
     //TODO: create error message if setup fails (dmpReady)
 
-    //while loop copied from mr jrowberg
-   while (!mpuInterrupt && fifoCount < packetSize) {
-        if (mpuInterrupt && fifoCount < packetSize) {
-          // try to get out of the infinite loop
-          fifoCount = gyroscope.getFIFOCount();
+       if(gyroscope.dmpGetCurrentFIFOPacket(fifoBuffer)) {
+            
+          // display Euler angles in degrees
+          gyroscope.dmpGetQuaternion(&q, fifoBuffer);
+          gyroscope.dmpGetGravity(&gravity, &q);
+          gyroscope.dmpGetYawPitchRoll(ypr, &q, &gravity);
         }
-    }
-   // reset interrupt flag and get INT_STATUS byte
-    mpuInterrupt = false;
-    mpuIntStatus = gyroscope.getIntStatus();
 
-    fifoCount = gyroscope.getFIFOCount();
 
-    //TODO: See if the following is correct
-    // check for overflow (this should never happen unless our code is too inefficient)
-    if ((mpuIntStatus & _BV(MPU6050_INTERRUPT_FIFO_OFLOW_BIT)) || fifoCount >= 1024) {
-        // reset so we can continue cleanly
-        gyroscope.resetFIFO();
-        fifoCount = gyroscope.getFIFOCount();
-
-        // otherwise, check for DMP data ready interrupt (this should happen frequently)
-    } else if (mpuIntStatus & _BV(MPU6050_INTERRUPT_DMP_INT_BIT)) {
-       // wait for correct available data length, should be a VERY short wait
-        while (fifoCount < packetSize) fifoCount = gyroscope.getFIFOCount();
-
-       /* // read a packet from FIFO
-        gyroscope.getFIFOBytes(fifoBuffer, packetSize);*/
-
-        // track FIFO count here in case there is > 1 packet available
-        // (this lets us immediately read more without waiting for an interrupt)
-        fifoCount -= packetSize;
-
-        // display Euler angles in degrees
-        gyroscope.dmpGetQuaternion(&q, fifoBuffer);
-        gyroscope.dmpGetGravity(&gravity, &q);
-        gyroscope.dmpGetYawPitchRoll(ypr, &q, &gravity);
-    }
 }
+
+#ifdef USE_MAGNET_JOYSTICK
+void setupMagnetometer() {
+  magnetometer.rebootMagnetometer();
+  delay(1000);
+  magnetometer.enableMagnetometer(Sodaq_LSM303AGR::MagHighResMode, Sodaq_LSM303AGR::Hz100, Sodaq_LSM303AGR::Continuous);
+  uint8_t axes = Sodaq_LSM303AGR::MagX;
+  magnetometer.enableMagnetometerInterrupt(axes, -400);
+}
+#endif
 
 void processSteering() { // read the joystick, then set the servo angles
 
     float servoAngles[4];
 
+
+    
+#ifdef USE_MAGNET_JOYSTICK
+    float x = magnetometer.getMagX() / 3000;
+    float y = magnetometer.getMagY() / 3000;
+    #ifdef DEBUG
+    Serial.print(x);
+    Serial.print(" ");
+    Serial.println(y);
+    #endif
+
+#else
     float x = (analogRead(JOYSTICK_X_PIN) - 512) / 512.0f;
     float y = (analogRead(JOYSTICK_Y_PIN) - 512) / 512.0f;
+#endif
 
     int deadMin = 85;
     int deadMax = 95;
@@ -203,31 +208,32 @@ void processSteering() { // read the joystick, then set the servo angles
 
         servoAngles[i] = round(servoAngles[i]);
 
+#ifdef DEBUG
         Serial.print("Setting servo ");
         Serial.print(i);
         Serial.print(" to ");
         Serial.println(servoAngles[i]);
+#endif
         setServo(servos[i], servoAngles[i]);
     }
 }
 
 void processDepthInput() {
     depthSensor.read();
-    Serial.print(sensor.pressure());
-    Serial.print(sensor.depth());
+//    Serial.print(sensor.pressure());
+  //  Serial.print(sensor.depth());
 }
 
 void processButtonInput() {
 
-    float roll;
 
     // TODO: see if we can free a spot for a depth set button (to maintain a depth automatically)
 
     //automatic tilt bouyancy system
 
     if (digitalRead(EXTRA_BUTTON_1_PIN) == LOW) { // auto bouyancy is on
-
-        roll = (ypr[2] * 180 / M_PI);
+#ifdef ENABLE_AUTO_PUMPS
+        float roll = (ypr[2] * 180 / M_PI);
 
         if ((roll) < 2.5 and (roll) > -2.5) {
 
@@ -246,6 +252,7 @@ void processButtonInput() {
             digitalWrite(PUMP_A_PIN, LOW);
             digitalWrite(PUMP_B_PIN, HIGH);
         }
+#endif
 
     } else { // auto bouyancy is off
 
@@ -287,6 +294,10 @@ void setup() {
     setPinModes();
 
    setupGyro();
+#ifdef USE_MAGNET_JOYSTICK
+   setupMagnetometer();
+#endif
+   
 }
 
 void loop() {
