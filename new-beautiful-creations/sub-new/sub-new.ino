@@ -8,8 +8,17 @@
 #include "Wire.h"
 #endif
 
+//#define USE_OLD_PINS //old board
+#define USE_NEW_PINS //board revision 1
+
+#define USE_MAGNET_JOYSTICK
+//#define ENABLE_AUTO_PUMPS
+
+//#define DEBUG
+
 #define arraylength(x) (sizeof(x) / sizeof((x)[0]))
 
+#ifdef USE_OLD_PINS
 #define INTERRUPT_PIN 2
 #define UP_BUTTON_PIN 4
 #define DOWN_BUTTON_PIN A1
@@ -26,12 +35,25 @@
 #define SERVO_2_PIN 6
 #define SERVO_3_PIN 5
 #define SERVO_4_PIN 3
+#endif
 
-
-#define USE_MAGNET_JOYSTICK
-//#define ENABLE_AUTO_PUMPS
-
-//#define DEBUG
+#ifdef USE_NEW_PINS
+#define UP_BUTTON_PIN A0
+#define DOWN_BUTTON_PIN 13
+#define MODE_BUTTON_PIN 8
+#define EXTRA_BUTTON_1_PIN 7
+#define DEPTH_LED_PIN 12
+#define ACTUATOR_A_PIN 13
+#define ACTUATOR_B_PIN A0
+#define PUMP_A_PIN 2
+#define PUMP_B_PIN 4
+#define JOYSTICK_X_PIN A2
+#define JOYSTICK_Y_PIN A3
+#define SERVO_1_PIN 9
+#define SERVO_2_PIN 6
+#define SERVO_3_PIN 5
+#define SERVO_4_PIN 3
+#endif
 
 Servo servos[4];
 
@@ -66,7 +88,7 @@ void setPinModes() {
     pinMode(PUMP_B_PIN, OUTPUT);
     pinMode(ACTUATOR_A_PIN, OUTPUT);
     pinMode(ACTUATOR_B_PIN, OUTPUT);
-    pinMode(INTERRUPT_PIN, INPUT); //TODO: It may need to be put after mpu initialization to work
+   // pinMode(INTERRUPT_PIN, INPUT); //TODO: It may need to be put after mpu initialization to work
     pinMode(JOYSTICK_X_PIN, INPUT);
     pinMode(JOYSTICK_Y_PIN, INPUT);
 
@@ -275,14 +297,14 @@ void processButtonInput() {
 
             if (UP_BUTTON_PIN == HIGH) {
 
-                digitalWrite(ACTUATOR_A_PIN, HIGH);
-                digitalWrite(ACTUATOR_B_PIN, LOW);
+                digitalWrite(ACTUATOR_A_PIN, LOW); 
+                digitalWrite(ACTUATOR_B_PIN, HIGH);
             }
 
             if (DOWN_BUTTON_PIN == HIGH) {
 
-                digitalWrite(ACTUATOR_A_PIN, LOW);
-                digitalWrite(ACTUATOR_B_PIN, HIGH);
+                digitalWrite(ACTUATOR_A_PIN, HIGH;
+                digitalWrite(ACTUATOR_B_PIN, LOW);
             }
         }
     }
