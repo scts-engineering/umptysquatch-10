@@ -8,7 +8,6 @@ void setup() {
   Serial.begin(9600);
 
   Serial.println("Starting");
-
   Wire.begin();
 
   // Initialize pressure sensor
@@ -47,7 +46,7 @@ void loop() {
 
   Serial.print("Altitude: ");
   Serial.print(sensor.altitude());
-  Serial.println(" m above mean sea level");
+  Serial.println(" m above mean sea level"); 
 
   delay(1000);
 }
