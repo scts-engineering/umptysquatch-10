@@ -1,7 +1,7 @@
 //#define USE_OLD_PINS //old board
 #define USE_NEW_PINS //board revision 1
 
-#define USE_MAGNET_JOYSTICK
+//#define USE_MAGNET_JOYSTICK
 //#define ENABLE_AUTO_PUMPS
 
 //#define DEBUG
@@ -39,8 +39,8 @@
 #define PUMP_B_PIN 4
 #define JOYSTICK_X_PIN A2
 #define JOYSTICK_Y_PIN A3
-#define SERVO_1_PIN 9
-#define SERVO_2_PIN 6
-#define SERVO_3_PIN 5
-#define SERVO_4_PIN 3
+#define SERVO_1_PIN 3
+#define SERVO_2_PIN 5
+#define SERVO_3_PIN 6
+#define SERVO_4_PIN 9
 #endif

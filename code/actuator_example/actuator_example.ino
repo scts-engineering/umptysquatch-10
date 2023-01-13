@@ -59,26 +59,27 @@ void loop() {
 
   Serial.println("starting servo test");
   Serial.println("testing servo 1");
+  delay(5000);
   setServo(servos[0], 146);
-  delay(1000);
+  delay(5000);
   setServo(servos[0], 0);
-  delay(1000);
+  delay(5000);
   Serial.println("testing servo 2");
   setServo(servos[1], 146);
-  delay(1000);
+  delay(5000);
   setServo(servos[0], 0);
-  delay(1000);
+  delay(5000);
   Serial.println("testing servo 3");
   setServo(servos[2], 146);
-  delay(1000);
+  delay(5000);
   setServo(servos[0], 0);
-  delay(1000);
+  delay(5000);
   Serial.println("testing servo 4");
   setServo(servos[3], 146);
-  delay(1000);
+  delay(5000);
   setServo(servos[3], 0);
-  delay(1000);
-
+  delay(5000);
+/*
   Serial.println("activating pump A");
   digitalWrite(PUMP_A_PIN, HIGH);
   delay(2000);
@@ -98,5 +99,5 @@ void loop() {
   digitalWrite(ACTUATOR_A_PIN, HIGH);
   delay(1000);
   digitalWrite(ACTUATOR_A_PIN, LOW);
-  delay(1000);
+  delay(1000);*/
 }

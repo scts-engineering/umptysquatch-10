@@ -96,7 +96,7 @@ void setupGyro() {
         gyroscope.setDMPEnabled(true);
 
         //enable Arduino interrupt detection
-        attachInterrupt(digitalPinToInterrupt(INTERRUPT_PIN), dmpDataReady, RISING);
+     //   attachInterrupt(digitalPinToInterrupt(INTERRUPT_PIN), dmpDataReady, RISING);
         mpuIntStatus = gyroscope.getIntStatus();
 
         dmpReady = true; //allows the main loop method to run
@@ -161,6 +161,8 @@ void processSteering() { // read the joystick, then set the servo angles
 #else
     float x = (analogRead(JOYSTICK_X_PIN) - 512) / 512.0f;
     float y = (analogRead(JOYSTICK_Y_PIN) - 512) / 512.0f;
+    // if it goes the opposite x direction remove this
+    x = -x;
 #endif
 
     int deadMin = 85;
@@ -258,7 +260,8 @@ void processButtonInput() {
 
             if (DOWN_BUTTON_PIN == HIGH) {
 
-                digitalWrite(ACTUATOR_A_PIN, HIGH;
+                digitalWrite(ACTUATOR_A_PIN, HIGH)
+                ;
                 digitalWrite(ACTUATOR_B_PIN, LOW);
             }
         }
