@@ -44,3 +44,10 @@
 #define SERVO_3_PIN 6
 #define SERVO_4_PIN 9
 #endif
+
+enum blinkInterval {
+
+    SLOW,
+    FAST,
+    SOLID
+};

@@ -1,4 +1,4 @@
-Tinclude "I2Cdev.h"
+#include "I2Cdev.h"
 #include "MPU6050_6Axis_MotionApps20.h"
 #include "MS5837.h"
 #include "Servo.h"
@@ -25,6 +25,13 @@ uint16_t packetSize;
 float ypr[3];
 
 volatile bool mpuInterrupt = false;
+
+int blinkSpeed;
+
+long currentTime, previousTime;
+boolean isOn;
+
+blinkInterval blinkinterval;
 
 void dmpDataReady() {
     mpuInterrupt = true;
@@ -268,14 +275,43 @@ void processButtonInput() {
     }
 }
 
+void processLED() {
+  if(blinkinterval == SLOW) {
+    blinkSpeed = 1000;
+  } else if(blinkinterval == FAST) {
+    blinkSpeed = 250;
+  } else {
+    blinkSpeed = 0;
+  }
+
+  currentTime = millis();
+
+  if(currentTime > previousTime + blinkSpeed) {
+    if(isOn) {
+      digitalWrite(12, LOW);
+      isOn = false;
+    } else {
+      digitalWrite(12, HIGH);
+      isOn = true;
+    }
+
+    previousTime = currentTime;
+  }
+  
+}
+
 void setup() {
   Serial.begin(9600);
 
-    setPinModes();
+  blinkinterval = FAST;
+  isOn = false;
+  previousTime = millis();
 
-   setupGyro();
+  setPinModes();
+
+  setupGyro();
 #ifdef USE_MAGNET_JOYSTICK
-   setupMagnetometer();
+  setupMagnetometer();
 #endif
    
 }
