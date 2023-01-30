@@ -45,9 +45,8 @@
 #define SERVO_4_PIN 9
 #endif
 
-enum blinkInterval {
-
-    SLOW,
-    FAST,
-    SOLID
+enum BlinkInterval {
+    SLOW = 1000,
+    FAST = 250,
+    SOLID = 0
 };

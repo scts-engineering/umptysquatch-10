@@ -29,9 +29,9 @@ volatile bool mpuInterrupt = false;
 int blinkSpeed;
 
 long currentTime, previousTime;
-boolean isOn;
+boolean isOn = false;
 
-blinkInterval blinkinterval;
+BlinkInterval blinkInterval;
 
 void dmpDataReady() {
     mpuInterrupt = true;
@@ -276,35 +276,33 @@ void processButtonInput() {
 }
 
 void processLED() {
-  if(blinkinterval == SLOW) {
-    blinkSpeed = 1000;
-  } else if(blinkinterval == FAST) {
-    blinkSpeed = 250;
+ 
+  if(blinkInterval == 0) {
+      if(!isOn) {
+        digitalWrite(12, HIGH);
+        isOn = true;
+      }
   } else {
-    blinkSpeed = 0;
-  }
-
-  currentTime = millis();
-
-  if(currentTime > previousTime + blinkSpeed) {
-    if(isOn) {
-      digitalWrite(12, LOW);
-      isOn = false;
-    } else {
-      digitalWrite(12, HIGH);
-      isOn = true;
-    }
-
-    previousTime = currentTime;
-  }
+    currentTime = millis();
   
+    if(currentTime > previousTime + blinkInterval) {
+        if(isOn) {
+          digitalWrite(12, LOW);
+          isOn = false;
+        } else {
+          digitalWrite(12, HIGH);
+          isOn = true;
+        }
+    
+        previousTime = currentTime;
+    }
+  }
 }
 
 void setup() {
   Serial.begin(9600);
 
-  blinkinterval = FAST;
-  isOn = false;
+  blinkInterval = FAST;
   previousTime = millis();
 
   setPinModes();
@@ -325,4 +323,6 @@ void loop() {
     processDepthInput();
 
     processButtonInput();
+
+    processLED();
 }
