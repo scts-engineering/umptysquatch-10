@@ -325,4 +325,9 @@ void loop() {
     processButtonInput();
 
     processLED();
+
+    char thing[100];
+    sprintf(thing, "Up button: %d. Down button: %d. Mode button: %d. Extra button 1: %d.\n", digitalRead(UP_BUTTON_PIN), digitalRead(DOWN_BUTTON_PIN), digitalRead(MODE_BUTTON_PIN), digitalRead(EXTRA_BUTTON_1_PIN));
+    Serial.print(thing);
+    
 }
