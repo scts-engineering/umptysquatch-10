@@ -44,7 +44,7 @@ void setPinModes() {
     pinMode(UP_BUTTON_PIN, INPUT);
     pinMode(DOWN_BUTTON_PIN, INPUT);
     pinMode(MODE_BUTTON_PIN, INPUT);
-    pinMode(EXTRA_BUTTON_1_PIN, INPUT);
+    pinMode(POWER_BUTTON_PIN, INPUT);
     pinMode(DEPTH_LED_PIN, OUTPUT);
     pinMode(PUMP_A_PIN, OUTPUT);
     pinMode(PUMP_B_PIN, OUTPUT);
@@ -217,7 +217,7 @@ void processButtonInput() {
 
     //automatic tilt bouyancy system
 
-    if (digitalRead(EXTRA_BUTTON_1_PIN) == LOW) { // auto bouyancy is on
+    if (digitalRead(POWER_BUTTON_PIN) == LOW) { // auto bouyancy is on
 #ifdef ENABLE_AUTO_PUMPS
         float roll = (ypr[2] * 180 / M_PI);
 
@@ -327,7 +327,7 @@ void loop() {
     processLED();
 
     char thing[100];
-    sprintf(thing, "Up button: %d. Down button: %d. Mode button: %d. Extra button 1: %d.\n", digitalRead(UP_BUTTON_PIN), digitalRead(DOWN_BUTTON_PIN), digitalRead(MODE_BUTTON_PIN), digitalRead(EXTRA_BUTTON_1_PIN));
+    sprintf(thing, "Up button: %d. Down button: %d. Mode button: %d. Power button: %d.\n", digitalRead(UP_BUTTON_PIN), digitalRead(DOWN_BUTTON_PIN), digitalRead(MODE_BUTTON_PIN), digitalRead(POWER_BUTTON_PIN));
     Serial.print(thing);
     
 }

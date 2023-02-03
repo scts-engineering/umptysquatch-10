@@ -13,7 +13,7 @@
 #define UP_BUTTON_PIN 4
 #define DOWN_BUTTON_PIN A1
 #define MODE_BUTTON_PIN A0
-#define EXTRA_BUTTON_1_PIN 13
+#define POWER_BUTTON_PIN 13
 #define DEPTH_LED_PIN 0
 #define ACTUATOR_A_PIN 8
 #define ACTUATOR_B_PIN 7
@@ -28,10 +28,10 @@
 #endif
 
 #ifdef USE_NEW_PINS
-#define UP_BUTTON_PIN A0
-#define DOWN_BUTTON_PIN 13
+#define UP_BUTTON_PIN 11
+#define DOWN_BUTTON_PIN 10
 #define MODE_BUTTON_PIN 8
-#define EXTRA_BUTTON_1_PIN 7
+#define POWER_BUTTON_PIN 7
 #define DEPTH_LED_PIN 12
 #define ACTUATOR_A_PIN 13
 #define ACTUATOR_B_PIN A0
