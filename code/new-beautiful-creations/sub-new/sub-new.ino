@@ -26,12 +26,17 @@ float ypr[3];
 
 volatile bool mpuInterrupt = false;
 
-int blinkSpeed;
+int blinkSpeed; //sets the blink interval of the LED
+long depth; // the current depth of the submarine
+long holdDepth; // the depth recorded after going into auto mode, must maintain this depth closely
 
 long currentTime, previousTime;
 boolean isOn = false;
 
 BlinkInterval blinkInterval;
+Mode mode;
+
+boolean pumpMode = true; //always defaults to pump mode for the first time it is put into manual mode
 
 void dmpDataReady() {
     mpuInterrupt = true;
@@ -41,8 +46,8 @@ void dmpDataReady() {
 void setPinModes() {
 
     //set the pins to be either an input, or output
-    pinMode(UP_BUTTON_PIN, INPUT);
-    pinMode(DOWN_BUTTON_PIN, INPUT);
+    pinMode(BUTTON_1_PIN, INPUT); // labeled "blow/pump FWD", used to control the compressed air in actuator mode, or the FWD pump in pump mode
+    pinMode(BUTTON_2_PIN, INPUT); // labeled "vent/pump AFT", used to control the vent in actuator mode, or the AFT pump in pump mode
     pinMode(MODE_BUTTON_PIN, INPUT);
     pinMode(POWER_BUTTON_PIN, INPUT);
     pinMode(DEPTH_LED_PIN, OUTPUT);
@@ -50,7 +55,7 @@ void setPinModes() {
     pinMode(PUMP_B_PIN, OUTPUT);
     pinMode(ACTUATOR_A_PIN, OUTPUT);
     pinMode(ACTUATOR_B_PIN, OUTPUT);
-   // pinMode(INTERRUPT_PIN, INPUT); //TODO: It may need to be put after mpu initialization to work
+   // pinMode(INTERRUPT_PIN, INPUT);
     pinMode(JOYSTICK_X_PIN, INPUT);
     pinMode(JOYSTICK_Y_PIN, INPUT);
 
@@ -78,14 +83,6 @@ void setupGyro() {
 
     gyroscope.initialize();
 
-    //TODO: have a timeout and error message if initilization fails
-    if (!depthSensor.init()) {
-        delay(1000);
-    }
-
-    // depthSensor.setModel(MS5837::MS5837_30BA); // set depth sensor model to the MS5837, 30 bar
-    depthSensor.setFluidDensity(997); // set fluid density to 997 kilograms per meter cubed (freshwater)
-
     //load and configure the DMP
     devStatus = gyroscope.dmpInitialize();
 
@@ -112,11 +109,57 @@ void setupGyro() {
     }
 }
 
+void setupDepthSensor() {
+
+    //TODO: have a timeout and error message if initilization fails
+    if (!depthSensor.init()) {
+        delay(1000);
+    }
+
+    // depthSensor.setModel(MS5837::MS5837_30BA); // set depth sensor model to the MS5837, 30 bar
+    depthSensor.setFluidDensity(997); // set fluid density to 997 kilograms per meter cubed (freshwater)
+}
+
 void setServo(Servo servo, float degrees) {
 
     float microseconds = degrees * 9.9 + 870;
 
     servo.writeMicroseconds(microseconds);
+}
+
+void setInitialMode() { //note that this method only runs during the startup to determine the starting mode
+
+    if(digitalRead(MODE_BUTTON_PIN) == HIGH) {
+        processDepthData();
+        holdDepth = depthSensor.depth();
+        mode = AUTO;
+    } else {
+        mode = PUMP; //if set to manual mode, the sub will default to pump mode
+    }
+}
+
+void setMode() { //used to change the mode during operation
+
+    if(digitalRead(MODE_BUTTON_PIN) == HIGH && mode != AUTO) { //only runs once every time auto gets swtiched on
+
+        holdDepth = depthSensor.depth();
+
+        if(pumpMode) {
+            pumpMode = false;
+        } else {
+            pumpMode = true;
+        }
+
+        mode = AUTO;
+
+    } else if(digitalRead(MODE_BUTTON_PIN) == LOW && mode == AUTO) { //only runs once every time manual gets switched on
+
+        if(pumpMode) {
+            mode = PUMP;
+        } else {
+            mode = ACTUATOR;
+        }
+    }
 }
 
 void processGyroData() {
@@ -204,74 +247,91 @@ void processSteering() { // read the joystick, then set the servo angles
     }
 }
 
-void processDepthInput() {
+void processDepthData() {
     depthSensor.read();
-//    Serial.print(sensor.pressure());
-  //  Serial.print(sensor.depth());
 }
 
-void processButtonInput() {
+void maintainEquilibrium() {
 
+    float roll = (ypr[2] * 180 / M_PI);
+    depth = depthSensor.depth();
 
-    // TODO: see if we can free a spot for a depth set button (to maintain a depth automatically)
+    if(roll < 2.5 && roll > -2.5 && depth < holdDepth + 1 && depth > holdDepth - 1) { //if the sub is in equalibrium then LED is set to SOLID
+        blinkInterval = SOLID;
+    } else { // if its not in equalibrium then it blinks the LED with SLOW interval
+        blinkInterval = SLOW;
+    }
 
-    //automatic tilt bouyancy system
+    if ((roll) < 2.5 and (roll) > -2.5) {
 
-    if (digitalRead(POWER_BUTTON_PIN) == LOW) { // auto bouyancy is on
-#ifdef ENABLE_AUTO_PUMPS
-        float roll = (ypr[2] * 180 / M_PI);
+        digitalWrite(PUMP_A_PIN, LOW);
+        digitalWrite(PUMP_B_PIN, LOW);
+    }
 
-        if ((roll) < 2.5 and (roll) > -2.5) {
+    if ((roll) > 2.5) {
 
-            digitalWrite(PUMP_A_PIN, LOW);
-            digitalWrite(PUMP_B_PIN, LOW);
-        }
+        digitalWrite(PUMP_A_PIN, HIGH);
+        digitalWrite(PUMP_B_PIN, LOW);
+    }
 
-        if ((roll) > 2.5) {
+    if ((roll) < -2.5) {
 
-            digitalWrite(PUMP_A_PIN, HIGH);
-            digitalWrite(PUMP_B_PIN, LOW);
-        }
+        digitalWrite(PUMP_A_PIN, LOW);
+        digitalWrite(PUMP_B_PIN, HIGH);
+    }
 
-        if ((roll) < -2.5) {
+    //TODO: depth offset equilibrium needs to be figured out(1 meter for temporary solution)
+    if(depth > holdDepth + 1) {
 
-            digitalWrite(PUMP_A_PIN, LOW);
-            digitalWrite(PUMP_B_PIN, HIGH);
-        }
-#endif
+        //TODO: make this activate the actuator in a safe way
 
-    } else { // auto bouyancy is off
+    } else if(depth < holdDepth - 1) {
 
-        if (digitalRead(MODE_BUTTON_PIN) == LOW) { // mode button is switched to manual pump control
+        //TODO: make this activate the actuator in a safe way
 
-            if (UP_BUTTON_PIN == HIGH) {
+    } else {
 
-                digitalWrite(PUMP_A_PIN, HIGH);
-                digitalWrite(PUMP_B_PIN, LOW);
-            }
+        digitalWrite(ACTUATOR_A_PIN, LOW);
+        digitalWrite(ACTUATOR_B_PIN, LOW);
+    }
 
-            if (DOWN_BUTTON_PIN == HIGH) {
+}
 
-                digitalWrite(PUMP_A_PIN, LOW);
-                digitalWrite(PUMP_B_PIN, HIGH);
-            }
-        }
+void processPumpInput() {
 
-        if (digitalRead(MODE_BUTTON_PIN) == HIGH) { // mode button is switched to manual actuator control
+    if (BUTTON_1_PIN == HIGH) {
 
-            if (UP_BUTTON_PIN == HIGH) {
+        digitalWrite(PUMP_A_PIN, HIGH);
+        digitalWrite(PUMP_B_PIN, LOW);
 
-                digitalWrite(ACTUATOR_A_PIN, LOW); 
-                digitalWrite(ACTUATOR_B_PIN, HIGH);
-            }
+    } else if (BUTTON_2_PIN == HIGH) {
 
-            if (DOWN_BUTTON_PIN == HIGH) {
+        digitalWrite(PUMP_A_PIN, LOW);
+        digitalWrite(PUMP_B_PIN, HIGH);
 
-                digitalWrite(ACTUATOR_A_PIN, HIGH)
-                ;
-                digitalWrite(ACTUATOR_B_PIN, LOW);
-            }
-        }
+    } else {
+
+        digitalWrite(PUMP_A_PIN, LOW);
+        digitalWrite(PUMP_B_PIN, LOW);
+    }
+}
+
+void processActuatorInput() {
+
+    if (BUTTON_1_PIN == HIGH) {
+
+        digitalWrite(PUMP_A_PIN, HIGH);
+        digitalWrite(PUMP_B_PIN, LOW);
+
+    } else if (BUTTON_2_PIN == HIGH) {
+
+        digitalWrite(PUMP_A_PIN, LOW);
+        digitalWrite(PUMP_B_PIN, HIGH);
+
+    } else {
+
+        digitalWrite(PUMP_A_PIN, LOW);
+        digitalWrite(PUMP_B_PIN, LOW);
     }
 }
 
@@ -308,26 +368,43 @@ void setup() {
   setPinModes();
 
   setupGyro();
+
+  setupDepthSensor();
+
 #ifdef USE_MAGNET_JOYSTICK
   setupMagnetometer();
 #endif
+
+  setInitialMode();
    
 }
 
 void loop() {
 
-    processGyroData();
+    if(mode = AUTO) {
+
+        processGyroData();
+
+        processDepthData();
+
+        maintainEquilibrium();
+    } else if(mode = PUMP) {
+
+        blinkInterval = SOLID;
+        processPumpInput();
+    } else {
+        blinkInterval = FAST;
+        processActuatorInput();
+    }
 
     processSteering();
 
-    processDepthInput();
-
-    processButtonInput();
-
     processLED();
 
-    char thing[100];
-    sprintf(thing, "Up button: %d. Down button: %d. Mode button: %d. Power button: %d.\n", digitalRead(UP_BUTTON_PIN), digitalRead(DOWN_BUTTON_PIN), digitalRead(MODE_BUTTON_PIN), digitalRead(POWER_BUTTON_PIN));
-    Serial.print(thing);
+    setMode();
+
+   // char thing[100];
+   // sprintf(thing, "Up button: %d. Down button: %d. Mode button: %d. Power button: %d.\n", digitalRead(BUTTON_1_PIN), digitalRead(BUTTON_2_PIN), digitalRead(MODE_BUTTON_PIN), digitalRead(POWER_BUTTON_PIN));
+   // Serial.print(thing);
     
 }

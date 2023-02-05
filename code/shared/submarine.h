@@ -28,8 +28,8 @@
 #endif
 
 #ifdef USE_NEW_PINS
-#define UP_BUTTON_PIN 11
-#define DOWN_BUTTON_PIN 10
+#define BUTTON_1_PIN 11
+#define BUTTON_2_PIN 10
 #define MODE_BUTTON_PIN 8
 #define POWER_BUTTON_PIN 7
 #define DEPTH_LED_PIN 12
@@ -49,4 +49,10 @@ enum BlinkInterval {
     SLOW = 1000,
     FAST = 250,
     SOLID = 0
+};
+
+enum Mode {
+    AUTO,
+    PUMP,
+    ACTUATOR
 };
