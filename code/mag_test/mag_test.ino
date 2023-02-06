@@ -2,27 +2,27 @@
 
 Sodaq_LSM303AGR accel;
 
-volatile bool magInterruptFlag = true;
+//volatile bool magInterruptFlag = true;
 
-void magInterrupt() 
-{
-    magInterruptFlag = true;
-}
+//void magInterrupt() 
+//{
+  //  magInterruptFlag = true;
+//}
 
 void setup() 
 {
-    SerialUSB.begin(57600);
+    Serial.begin(57600);
     delay(1000);
 
-    SerialUSB.println("BEGIN");
+    Serial.println("BEGIN");
     Wire.begin();
     delay(1000);
 
     if (accel.checkWhoAmI()) {
-        SerialUSB.println("FOUND ACCEL!");
+        Serial.println("FOUND ACCEL!");
     }
     else {
-        SerialUSB.println("NO ACCEL!");
+        Serial.println("NO ACCEL!");
     }
     
     accel.rebootMagnetometer();
@@ -33,22 +33,22 @@ void setup()
     uint8_t axes = Sodaq_LSM303AGR::MagX;
     accel.enableMagnetometerInterrupt(axes, -400);
 
-    pinMode(MAG_INT, INPUT_PULLDOWN);
-    attachInterrupt(MAG_INT, magInterrupt, RISING);
+//    pinMode(MAG_INT, INPUT_PULLDOWN);
+  //  attachInterrupt(MAG_INT, magInterrupt, RISING);
 }
 
 void loop() 
 {
-    delay(100);
+    delay(10);
 
-    SerialUSB.print(accel.getMagX());
-    SerialUSB.print(" ");
-    SerialUSB.print(accel.getMagY());
-    SerialUSB.print(" ");
-    SerialUSB.println(accel.getMagZ());
+    Serial.print(accel.getMagX());
+    Serial.print(" ");
+    Serial.print(accel.getMagY());
+    Serial.print(" ");
+    Serial.println(accel.getMagZ());
 
-    if (magInterruptFlag) {
-        SerialUSB.println("INTERRUPT");
+/*    if (magInterruptFlag) {
+        Serial.println("INTERRUPT");
         magInterruptFlag = false;
-    }
+    }*/
 }

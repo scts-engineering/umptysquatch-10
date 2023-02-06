@@ -4,7 +4,7 @@
 //#define USE_MAGNET_JOYSTICK
 //#define ENABLE_AUTO_PUMPS
 
-#define DEBUG
+//#define DEBUG
 
 #define arraylength(x) (sizeof(x) / sizeof((x)[0]))
 #ifdef DEBUG

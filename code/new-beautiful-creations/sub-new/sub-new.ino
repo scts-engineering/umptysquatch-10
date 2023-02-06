@@ -207,11 +207,11 @@ void processSteering() { // read the joystick, then set the servo angles
 #ifdef USE_MAGNET_JOYSTICK
     float x = magnetometer.getMagX() / 3000;
     float y = magnetometer.getMagY() / 3000;
-    #ifdef DEBUG
+    //#ifdef DEBUG
     Serial.print(x);
     Serial.print(" ");
     Serial.println(y);
-    #endif
+    //#endif
 
 #else
     float x = (analogRead(JOYSTICK_X_PIN) - 512) / 512.0f;
@@ -241,13 +241,13 @@ void processSteering() { // read the joystick, then set the servo angles
         if (servoAngles[i] > deadMin && servoAngles[i] < deadMax) servoAngles[i] = 90;
 
         servoAngles[i] = round(servoAngles[i]);
-
+/*
 #ifdef DEBUG
         Serial.print("Setting servo ");
         Serial.print(i);
         Serial.print(" to ");
         Serial.println(servoAngles[i]);
-#endif
+#endif*/
         setServo(servos[i], servoAngles[i]);
     }
 }
