@@ -68,6 +68,8 @@ void setPinModes() {
 
 void setupGyro() {
 
+    debugPrintln("Starting gyro initialization");
+
     bool dmpReady = false;
     uint8_t devStatus;
 
@@ -93,6 +95,7 @@ void setupGyro() {
     gyroscope.setZAccelOffset(1788);
 
     //TODO: have error message if initialization fails
+    //TODO: retry initalization if failed
     if (devStatus == 0) {
 
         //TODO: Might need gyro calibration methods if results are off
@@ -106,6 +109,11 @@ void setupGyro() {
         dmpReady = true; //allows the main loop method to run
 
         packetSize = gyroscope.dmpGetFIFOPacketSize();
+
+        debugPrintln("Sucessful gyro initialization");
+    } else {
+
+        debugPrintln("Failed gyro initialzation");
     }
 }
 
@@ -284,7 +292,7 @@ void maintainEquilibrium() {
 
     } else if(depth < holdDepth - 1) {
 
-        //TODO: make this activate the actuator in a safe way
+        //TODO: make this activate thmoe actuator in a safe way
 
     } else {
 
@@ -295,18 +303,18 @@ void maintainEquilibrium() {
 
 void processPumpInput() {
 
-    if (BUTTON_1_PIN == HIGH) {
+    if (digitalRead(BUTTON_1_PIN) == HIGH) {
 
         digitalWrite(PUMP_A_PIN, HIGH);
         digitalWrite(PUMP_B_PIN, LOW);
 
-    } else if (BUTTON_2_PIN == HIGH) {
+    } else if (digitalRead(BUTTON_2_PIN) == HIGH) {
 
         digitalWrite(PUMP_A_PIN, LOW);
         digitalWrite(PUMP_B_PIN, HIGH);
 
     } else {
-
+        Serial.println("here");
         digitalWrite(PUMP_A_PIN, LOW);
         digitalWrite(PUMP_B_PIN, LOW);
     }
@@ -314,20 +322,23 @@ void processPumpInput() {
 
 void processActuatorInput() {
 
-    if (BUTTON_1_PIN == HIGH) {
+    digitalWrite(PUMP_A_PIN, LOW); //change this to be better 
+    digitalWrite(PUMP_B_PIN, LOW);
 
-        digitalWrite(PUMP_A_PIN, HIGH);
-        digitalWrite(PUMP_B_PIN, LOW);
+    if (digitalRead(BUTTON_1_PIN) == HIGH) {
 
-    } else if (BUTTON_2_PIN == HIGH) {
+        digitalWrite(ACTUATOR_A_PIN, HIGH);
+        digitalWrite(ACTUATOR_B_PIN, LOW);
 
-        digitalWrite(PUMP_A_PIN, LOW);
-        digitalWrite(PUMP_B_PIN, HIGH);
+    } else if (digitalRead(BUTTON_2_PIN) == HIGH) {
+
+        digitalWrite(ACTUATOR_A_PIN, LOW);
+        digitalWrite(ACTUATOR_B_PIN, HIGH);
 
     } else {
 
-        digitalWrite(PUMP_A_PIN, LOW);
-        digitalWrite(PUMP_B_PIN, LOW);
+        digitalWrite(ACTUATOR_A_PIN, LOW);
+        digitalWrite(ACTUATOR_B_PIN, LOW);
     }
 }
 
@@ -377,15 +388,15 @@ void setup() {
 
 void loop() {
 
-    if(mode = AUTO) {
+    if(mode == AUTO) {
 
         processGyroData();
 
         processDepthData();
 
         maintainEquilibrium();
-    } else if(mode = PUMP) {
-
+    } else if(mode == PUMP) {
+        Serial.println("I am now in manual pump mode");
         blinkInterval = SOLID;
         processPumpInput();
     } else {

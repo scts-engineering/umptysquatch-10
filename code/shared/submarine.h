@@ -4,9 +4,16 @@
 //#define USE_MAGNET_JOYSTICK
 //#define ENABLE_AUTO_PUMPS
 
-//#define DEBUG
+#define DEBUG
 
 #define arraylength(x) (sizeof(x) / sizeof((x)[0]))
+#ifdef DEBUG
+#define debugPrintln(x) Serial.println(x)
+#define debugPrint(x) Serial.print(x)
+#else
+#define debugPrintln(x)
+#define debugPrint(x)
+#endif
 
 #ifdef USE_OLD_PINS
 #define INTERRUPT_PIN 2
