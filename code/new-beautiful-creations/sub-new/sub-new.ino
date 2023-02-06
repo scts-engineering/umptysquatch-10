@@ -100,7 +100,7 @@ void setupGyro() {
         gyroscope.setDMPEnabled(true);
 
         //enable Arduino interrupt detection
-     //   attachInterrupt(digitalPinToInterrupt(INTERRUPT_PIN), dmpDataReady, RISING);
+        //attachInterrupt(digitalPinToInterrupt(INTERRUPT_PIN), dmpDataReady, RISING);
         mpuIntStatus = gyroscope.getIntStatus();
 
         dmpReady = true; //allows the main loop method to run
@@ -172,24 +172,23 @@ void processGyroData() {
  
     //TODO: create error message if setup fails (dmpReady)
 
-       if(gyroscope.dmpGetCurrentFIFOPacket(fifoBuffer)) {
+    if(gyroscope.dmpGetCurrentFIFOPacket(fifoBuffer)) {
             
-          // display Euler angles in degrees
-          gyroscope.dmpGetQuaternion(&q, fifoBuffer);
-          gyroscope.dmpGetGravity(&gravity, &q);
-          gyroscope.dmpGetYawPitchRoll(ypr, &q, &gravity);
-        }
-
-
+        // display Euler angles in degrees
+        gyroscope.dmpGetQuaternion(&q, fifoBuffer);
+        gyroscope.dmpGetGravity(&gravity, &q);
+        gyroscope.dmpGetYawPitchRoll(ypr, &q, &gravity);
+    }
 }
 
 #ifdef USE_MAGNET_JOYSTICK
 void setupMagnetometer() {
-  magnetometer.rebootMagnetometer();
-  delay(1000);
-  magnetometer.enableMagnetometer(Sodaq_LSM303AGR::MagHighResMode, Sodaq_LSM303AGR::Hz100, Sodaq_LSM303AGR::Continuous);
-  uint8_t axes = Sodaq_LSM303AGR::MagX;
-  magnetometer.enableMagnetometerInterrupt(axes, -400);
+    
+    magnetometer.rebootMagnetometer();
+    delay(1000);
+    magnetometer.enableMagnetometer(Sodaq_LSM303AGR::MagHighResMode, Sodaq_LSM303AGR::Hz100, Sodaq_LSM303AGR::Continuous);
+    uint8_t axes = Sodaq_LSM303AGR::MagX;
+    magnetometer.enableMagnetometerInterrupt(axes, -400);
 }
 #endif
 
@@ -197,8 +196,6 @@ void processSteering() { // read the joystick, then set the servo angles
 
     float servoAngles[4];
 
-
-    
 #ifdef USE_MAGNET_JOYSTICK
     float x = magnetometer.getMagX() / 3000;
     float y = magnetometer.getMagY() / 3000;
@@ -294,7 +291,6 @@ void maintainEquilibrium() {
         digitalWrite(ACTUATOR_A_PIN, LOW);
         digitalWrite(ACTUATOR_B_PIN, LOW);
     }
-
 }
 
 void processPumpInput() {
@@ -360,22 +356,22 @@ void processLED() {
 }
 
 void setup() {
-  Serial.begin(9600);
+    Serial.begin(9600);
 
-  blinkInterval = FAST;
-  previousTime = millis();
+    blinkInterval = FAST;
+    previousTime = millis();
 
-  setPinModes();
+    setPinModes();
 
-  setupGyro();
+    setupGyro();
 
-  setupDepthSensor();
+    setupDepthSensor();
 
 #ifdef USE_MAGNET_JOYSTICK
-  setupMagnetometer();
+    setupMagnetometer();
 #endif
 
-  setInitialMode();
+    setInitialMode();
    
 }
 
@@ -403,8 +399,8 @@ void loop() {
 
     setMode();
 
-   // char thing[100];
-   // sprintf(thing, "Up button: %d. Down button: %d. Mode button: %d. Power button: %d.\n", digitalRead(BUTTON_1_PIN), digitalRead(BUTTON_2_PIN), digitalRead(MODE_BUTTON_PIN), digitalRead(POWER_BUTTON_PIN));
-   // Serial.print(thing);
+    // char thing[100];
+    // sprintf(thing, "Up button: %d. Down button: %d. Mode button: %d. Power button: %d.\n", digitalRead(BUTTON_1_PIN), digitalRead(BUTTON_2_PIN), digitalRead(MODE_BUTTON_PIN), digitalRead(POWER_BUTTON_PIN));
+    // Serial.print(thing);
     
 }
