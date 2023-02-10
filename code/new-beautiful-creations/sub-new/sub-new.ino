@@ -24,6 +24,9 @@ uint8_t mpuIntStatus;
 uint16_t packetSize;
 float ypr[3];
 
+double magCalX = 0;
+double magCalY = 0;
+
 volatile bool mpuInterrupt = false;
 
 int blinkSpeed; //sets the blink interval of the LED
@@ -197,6 +200,10 @@ void setupMagnetometer() {
     magnetometer.enableMagnetometer(Sodaq_LSM303AGR::MagHighResMode, Sodaq_LSM303AGR::Hz100, Sodaq_LSM303AGR::Continuous);
     uint8_t axes = Sodaq_LSM303AGR::MagX;
     magnetometer.enableMagnetometerInterrupt(axes, -400);
+
+//sets zero of magnetometer, used for correction of dimensional offset
+    magCalX = magnetometer.getMagX(); 
+    magCalY = magnetometer.getMagY();
 }
 #endif
 
@@ -205,8 +212,8 @@ void processSteering() { // read the joystick, then set the servo angles
     float servoAngles[4];
 
 #ifdef USE_MAGNET_JOYSTICK
-    float x = magnetometer.getMagX() / 3000;
-    float y = magnetometer.getMagY() / 3000;
+    float x = (magnetometer.getMagX() - magCalX) / 3000;
+    float y = (magnetometer.getMagY() - magCalY) / 3000;
     //#ifdef DEBUG
     Serial.print(x);
     Serial.print(" ");

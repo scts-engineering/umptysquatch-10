@@ -36,7 +36,7 @@ public class Window {
 
     }
 
-    private static int MAX_MIN_DIM = 10000;
+    private static int MAX_MIN_DIM = 7500;
 
     private void init(int width, int height){
 
