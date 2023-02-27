@@ -1,4 +1,4 @@
-#include "Servo.h"
+#include <Servo.h>
 
 #define UP_BUTTON_PIN A0
 #define DOWN_BUTTON_PIN 13
@@ -35,17 +35,17 @@ void setPinModes() {
     pinMode(JOYSTICK_Y_PIN, INPUT);
 
     //set the servos to recieve pin input
-    servos[0].attach(SERVO_1_PIN);
-    servos[1].attach(SERVO_2_PIN);
-    servos[2].attach(SERVO_3_PIN);
-    servos[3].attach(SERVO_4_PIN);
+    servos[0].attach(SERVO_1_PIN, 870, 2320);
+    servos[1].attach(SERVO_2_PIN, 870, 2320);
+    servos[2].attach(SERVO_3_PIN, 870, 2320);
+    servos[3].attach(SERVO_4_PIN, 870, 2320);
 }
 
-void setServo(Servo servo, float degrees) {
+void setServo(Servo *servo, float degrees) {
 
-    float microseconds = degrees * 9.9 + 870;
-
-    servo.writeMicroseconds(microseconds);
+    // convert 0-146 deg to "0-180 deg" for library
+    float fakeDegrees = degrees / 0.8111f;
+    servo->write(fakeDegrees);
 }
 
 void setup() {
@@ -56,29 +56,41 @@ void setup() {
 }
 
 void loop() {
-
+  /*for(int i = 870; i < 2315; i++) {
+    servos[3].writeMicroseconds(i);    
+  }*/
+  setServo(&servos[1], 0);
+  delay(2000);
+  /*for(int i = 2315; i > 870; i--) {
+    servos[3].writeMicroseconds(i);
+  }*/
+  setServo(&servos[1], 146);
+  delay(2000);
+  Serial.println("blah");
+  
+/*
   Serial.println("starting servo test");
   Serial.println("testing servo 1");
-  delay(5000);
+  delay(2000);
   setServo(servos[0], 146);
-  delay(5000);
+  delay(2000);
   setServo(servos[0], 0);
-  delay(5000);
+  delay(2000);
   Serial.println("testing servo 2");
   setServo(servos[1], 146);
-  delay(5000);
+  delay(2000);
   setServo(servos[0], 0);
-  delay(5000);
+  delay(2000);
   Serial.println("testing servo 3");
   setServo(servos[2], 146);
-  delay(5000);
+  delay(2000);
   setServo(servos[0], 0);
-  delay(5000);
+  delay(2000);
   Serial.println("testing servo 4");
   setServo(servos[3], 146);
-  delay(5000);
+  delay(2000);
   setServo(servos[3], 0);
-  delay(5000);
+  delay(2000);*/
 /*
   Serial.println("activating pump A");
   digitalWrite(PUMP_A_PIN, HIGH);

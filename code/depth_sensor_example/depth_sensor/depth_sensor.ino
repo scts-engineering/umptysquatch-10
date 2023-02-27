@@ -6,6 +6,8 @@ MS5837 sensor;
 void setup() {
 
   Serial.begin(9600);
+  Wire.setSDA(20);
+  Wire.setSCL(21);
 
   Serial.println("Starting");
   Wire.begin();
