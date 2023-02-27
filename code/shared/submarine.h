@@ -2,7 +2,7 @@
 //#define USE_NEW_PINS //board revision 1
 #define USE_PI_PINS
 
-#define USE_MAGNET_JOYSTICK
+//#define USE_MAGNET_JOYSTICK
 //#define ENABLE_AUTO_PUMPS
 
 #define DEBUG

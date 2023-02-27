@@ -1,4 +1,3 @@
-#include <helper_3dmath.h>
 #include "I2Cdev.h"
 #include "MPU6050_6Axis_MotionApps20.h"
 #include "Wire.h"
@@ -76,14 +75,6 @@ void setupGyro() {
     bool dmpReady = false;
     uint8_t devStatus;
 
-    // join I2C bus (I2Cdev library doesn't do this automatically)
-    //#if I2CDEV_IMPLEMENTATION == I2CDEV_ARDUINO_WIRE
-       // Wire.begin();
-        //Wire.setClock(400000); // 400kHz I2C clock. Comment this line if having compilation difficulties
-    //#elif I2CDEV_IMPLEMENTATION == I2CDEV_BUILTIN_FASTWIRE
-//        Fastwire::setup(400, true);
-    //#endif
-
     debugPrintln("running gyroscope.initialize()");
     gyroscope.initialize();
 
@@ -98,7 +89,6 @@ void setupGyro() {
     gyroscope.setZGyroOffset(-85);
     gyroscope.setZAccelOffset(1788);
 
-    //TODO: have error message if initialization fails
     //TODO: retry initalization if failed
     if (devStatus == 0) {
 
@@ -106,8 +96,6 @@ void setupGyro() {
 
         gyroscope.setDMPEnabled(true);
 
-        //enable Arduino interrupt detection
-        //attachInterrupt(digitalPinToInterrupt(INTERRUPT_PIN), dmpDataReady, RISING);
         mpuIntStatus = gyroscope.getIntStatus();
 
         dmpReady = true; //allows the main loop method to run
@@ -217,11 +205,11 @@ void processSteering() { // read the joystick, then set the servo angles
 #ifdef USE_MAGNET_JOYSTICK
     float x = (magnetometer.getMagX() - magCalX) / 3000;
     float y = (magnetometer.getMagY() - magCalY) / 3000;
-    //#ifdef DEBUG
+#ifdef DEBUG
     Serial.print(x);
     Serial.print(" ");
     Serial.println(y);
-    //#endif
+#endif
 
 #else
     float x = (analogRead(JOYSTICK_X_PIN) - 512) / 512.0f;
@@ -229,8 +217,7 @@ void processSteering() { // read the joystick, then set the servo angles
     // if it goes the opposite x direction remove this
     x = -x;
 #endif
-Serial.println(x);
-Serial.println(y);
+
     int deadMin = 85;
     int deadMax = 95;
     int minAngle = 45; //minimum angle required for x-pattern
@@ -252,13 +239,13 @@ Serial.println(y);
         if (servoAngles[i] > deadMin && servoAngles[i] < deadMax) servoAngles[i] = 90;
 
         servoAngles[i] = round(servoAngles[i]);
-/*
+
 #ifdef DEBUG
         Serial.print("Setting servo ");
         Serial.print(i);
         Serial.print(" to ");
         Serial.println(servoAngles[i]);
-#endif*/
+#endif
         setServo(&servos[i], servoAngles[i]);
     }
 }
@@ -409,8 +396,6 @@ void setup() {
 }
 
 void loop() {
-  Serial.println("loop");
-   // while(1) { Serial.println("hi"); }
     if(mode == AUTO) {
 
         processGyroData();
