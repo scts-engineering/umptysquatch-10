@@ -1,0 +1,29 @@
+6710422198158
+custom_footprints
+metro_mini
+
+
+0
+40
+40
+custom_footprints
+metro_mini_other
+Through hole straight pin header, 1x14, 2.54mm pitch, single row
+Through hole pin header THT 1x14 2.54mm single row
+0
+28
+14
+custom_footprints
+mpu6050
+Through hole straight pin header, 1x08, 2.54mm pitch, single row
+Through hole pin header THT 1x08 2.54mm single row
+0
+8
+8
+custom_footprints
+raspberry_pi_pico
+
+
+0
+40
+40
