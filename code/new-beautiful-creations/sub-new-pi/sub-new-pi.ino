@@ -113,9 +113,12 @@ void setupDepthSensor() {
 
     //TODO: have a timeout and error message if initilization fails
     if (!depthSensor.init()) {
+        debugPrintln("waiting on depth sensor...");
         delay(1000);
+    } else {
+        debugPrintln("depth sensor initilized successfully");
     }
-
+    
     // depthSensor.setModel(MS5837::MS5837_30BA); // set depth sensor model to the MS5837, 30 bar
     depthSensor.setFluidDensity(997); // set fluid density to 997 kilograms per meter cubed (freshwater)
 }
@@ -133,8 +136,10 @@ void setInitialMode() { //note that this method only runs during the startup to 
         processDepthData();
         holdDepth = depthSensor.depth();
         mode = AUTO;
+        debugPrintln("initial mode set to AUTO");
     } else {
         mode = PUMP; //if set to manual mode, the sub will default to pump mode
+        debugPrintln("initial mode set to PUMP (manual default)");
     }
 }
 
@@ -151,13 +156,16 @@ void setMode() { //used to change the mode during operation
         }
 
         mode = AUTO;
+        debugPrintln("mode switched to AUTO");
 
     } else if(digitalRead(MODE_BUTTON_PIN) == LOW && mode == AUTO) { //only runs once every time manual gets switched on
 
         if(pumpMode) {
             mode = PUMP;
+            debugPrintln("mode switched to PUMP");
         } else {
             mode = ACTUATOR;
+            debugPrintln("mode switched to ACTUATOR");
         }
     }
 }
