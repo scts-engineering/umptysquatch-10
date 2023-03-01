@@ -285,13 +285,27 @@ void maintainEquilibrium() {
     }
 
     //TODO: depth offset equilibrium needs to be figured out(1 meter for temporary solution)
-    if(depth > holdDepth + 1) {
 
-        //TODO: make this activate the actuator in a safe way
+    //if there is a depth offset sync the appropriate actuator to the blinking of the LED
+    if(depth > holdDepth + 1) { //if the sub is to high, which activates the vent
 
-    } else if(depth < holdDepth - 1) {
+        if(isOn) {
+            digitalWrite(ACTUATOR_A_PIN, HIGH); //TODO: note that these actuators could be switched and need to be checked ASAP
+            digitalWrite(ACTUATOR_B_PIN, LOW);
+        } else {
+            digitalWrite(ACTUATOR_A_PIN, LOW);
+            digitalWrite(ACTUATOR_B_PIN, LOW);
+        }
 
-        //TODO: make this activate thmoe actuator in a safe way
+    } else if(depth < holdDepth - 1) { //if the sub is to low, which activates the blow
+
+        if(isOn) {
+            digitalWrite(ACTUATOR_A_PIN, LOW);
+            digitalWrite(ACTUATOR_B_PIN, HIGH);
+        } else {
+            digitalWrite(ACTUATOR_A_PIN, LOW);
+            digitalWrite(ACTUATOR_B_PIN, LOW);
+        }
 
     } else {
 
