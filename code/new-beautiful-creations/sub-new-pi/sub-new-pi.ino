@@ -26,6 +26,9 @@ float ypr[3];
 double magCalX = 0;
 double magCalY = 0;
 
+int modeButtonState;
+int lastModeButtonState;
+
 volatile bool mpuInterrupt = false;
 
 int blinkSpeed; //sets the blink interval of the LED
@@ -137,37 +140,59 @@ void setInitialMode() { //note that this method only runs during the startup to 
         holdDepth = depthSensor.depth();
         mode = AUTO;
         debugPrintln("initial mode set to AUTO");
+
     } else {
         mode = PUMP; //if set to manual mode, the sub will default to pump mode
         debugPrintln("initial mode set to PUMP (manual default)");
     }
+
+    modeButtonState = MODE_BUTTON_PIN;
+    lastModeButtonState = modeButtonState;
 }
 
 void setMode() { //used to change the mode during operation
 
-    if(digitalRead(MODE_BUTTON_PIN) == HIGH && mode != AUTO) { //only runs once every time auto gets swtiched on
 
-        holdDepth = depthSensor.depth();
+    long lastDebounceTime = 0;
+    long debounceDelay = 50;
 
-        if(pumpMode) {
-            pumpMode = false;
-        } else {
-            pumpMode = true;
-        }
+    if(reading != lastModeButtonState) {
+        lastDebounceTime = millis();
+    }
 
-        mode = AUTO;
-        debugPrintln("mode switched to AUTO");
+    if((millis() - lastDebounceTime) > debounceDelay) {
 
-    } else if(digitalRead(MODE_BUTTON_PIN) == LOW && mode == AUTO) { //only runs once every time manual gets switched on
+        if(reading != modeButtonState) {
 
-        if(pumpMode) {
-            mode = PUMP;
-            debugPrintln("mode switched to PUMP");
-        } else {
-            mode = ACTUATOR;
-            debugPrintln("mode switched to ACTUATOR");
+            buttonState = reading;
+
+            if(modeButtonState == HIGH && mode != AUTO) { //only runs once every time auto gets swtiched on
+
+                holdDepth = depthSensor.depth();
+
+                if(pumpMode) {
+                    pumpMode = false;
+                } else {
+                    pumpMode = true;
+                }
+
+                mode = AUTO;
+                debugPrintln("mode switched to AUTO");
+
+            } else if(modeButtonState == LOW && mode == AUTO) { //only runs once every time manual gets switched on
+
+                if(pumpMode) {
+                    mode = PUMP;
+                    debugPrintln("mode switched to PUMP");
+                } else {
+                    mode = ACTUATOR;
+                    debugPrintln("mode switched to ACTUATOR");
+                }
+            }
         }
     }
+
+    lastModeButtonState = reading;
 }
 
 void processGyroData() {
@@ -249,10 +274,10 @@ void processSteering() { // read the joystick, then set the servo angles
         servoAngles[i] = round(servoAngles[i]);
 
 #ifdef DEBUG
-        Serial.print("Setting servo ");
+       /* Serial.print("Setting servo ");
         Serial.print(i);
         Serial.print(" to ");
-        Serial.println(servoAngles[i]);
+        Serial.println(servoAngles[i]); */
 #endif
         setServo(&servos[i], servoAngles[i]);
     }
@@ -260,6 +285,7 @@ void processSteering() { // read the joystick, then set the servo angles
 
 void processDepthData() {
     depthSensor.read();
+    Serial.println(depthSensor.depth());
 }
 
 void maintainEquilibrium() {
@@ -335,7 +361,6 @@ void processPumpInput() {
         digitalWrite(PUMP_B_PIN, HIGH);
 
     } else {
-        Serial.println("here");
         digitalWrite(PUMP_A_PIN, LOW);
         digitalWrite(PUMP_B_PIN, LOW);
     }
@@ -418,6 +443,9 @@ void setup() {
 }
 
 void loop() {
+
+    int reading = digitalRead(MODE_BUTTON_PIN);
+
     if(mode == AUTO) {
 
         processGyroData();
