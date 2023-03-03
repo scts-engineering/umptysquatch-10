@@ -28,6 +28,7 @@ double magCalY = 0;
 
 int modeButtonState;
 int lastModeButtonState;
+int reading;
 
 volatile bool mpuInterrupt = false;
 
@@ -145,7 +146,7 @@ void setInitialMode() { //note that this method only runs during the startup to 
         mode = PUMP; //if set to manual mode, the sub will default to pump mode
         debugPrintln("initial mode set to PUMP (manual default)");
     }
-
+    reading = MODE_BUTTON_PIN;
     modeButtonState = MODE_BUTTON_PIN;
     lastModeButtonState = modeButtonState;
 }
@@ -155,6 +156,7 @@ void setMode() { //used to change the mode during operation
 
     long lastDebounceTime = 0;
     long debounceDelay = 50;
+    reading = digitalRead(MODE_BUTTON_PIN);
 
     if(reading != lastModeButtonState) {
         lastDebounceTime = millis();
@@ -164,7 +166,7 @@ void setMode() { //used to change the mode during operation
 
         if(reading != modeButtonState) {
 
-            buttonState = reading;
+            modeButtonState = reading;
 
             if(modeButtonState == HIGH && mode != AUTO) { //only runs once every time auto gets swtiched on
 
@@ -180,7 +182,9 @@ void setMode() { //used to change the mode during operation
                 debugPrintln("mode switched to AUTO");
 
             } else if(modeButtonState == LOW && mode == AUTO) { //only runs once every time manual gets switched on
-
+               
+                turnOffAllDevices();
+                
                 if(pumpMode) {
                     mode = PUMP;
                     debugPrintln("mode switched to PUMP");
@@ -322,9 +326,9 @@ void maintainEquilibrium() {
 
     //if there is a depth offset sync the appropriate actuator to the blinking of the LED
     if(depth > holdDepth + 1) { //if the sub is to high, which activates the vent
-
+        Serial.println("hi");
         if(isOn) {
-            digitalWrite(ACTUATOR_A_PIN, HIGH); //TODO: note that these actuators could be switched and need to be checked ASAP
+            digitalWrite(ACTUATOR_A_PIN, HIGH); 
             digitalWrite(ACTUATOR_B_PIN, LOW);
         } else {
             digitalWrite(ACTUATOR_A_PIN, LOW);
@@ -412,6 +416,13 @@ void processLED() {
   }
 }
 
+void turnOffAllDevices() {
+    digitalWrite(ACTUATOR_A_PIN, LOW);
+    digitalWrite(ACTUATOR_B_PIN, LOW);
+    digitalWrite(PUMP_A_PIN, LOW);
+    digitalWrite(PUMP_B_PIN, LOW);
+}
+
 void setup() {
     Serial.begin(9600);
     Wire.setSDA(20);
@@ -443,8 +454,6 @@ void setup() {
 }
 
 void loop() {
-
-    int reading = digitalRead(MODE_BUTTON_PIN);
 
     if(mode == AUTO) {
 
