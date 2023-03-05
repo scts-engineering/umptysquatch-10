@@ -8,6 +8,7 @@
 #include "Sodaq_LSM303AGR.h"
 
 #include "shared/submarine.h"
+#include "buttons.h"
 
 Servo servos[4];
 
@@ -49,12 +50,16 @@ void dmpDataReady() {
     //Serial.println("dmp data ready called");
 }
 
+DebouncedSwitch modeSwitch;
+
 void setPinModes() {
 
     //set the pins to be either an input, or output
     pinMode(BUTTON_1_PIN, INPUT); // labeled "blow/pump FWD", used to control the compressed air in actuator mode, or the FWD pump in pump mode
     pinMode(BUTTON_2_PIN, INPUT); // labeled "vent/pump AFT", used to control the vent in actuator mode, or the AFT pump in pump mode
-    pinMode(MODE_BUTTON_PIN, INPUT);
+    //pinMode(MODE_BUTTON_PIN, INPUT);
+    attachSwitch(&modeSwitch, MODE_BUTTON_PIN, 50, changeMode);
+    
     pinMode(POWER_BUTTON_PIN, INPUT);
     pinMode(DEPTH_LED_PIN, OUTPUT);
     pinMode(PUMP_A_PIN, OUTPUT);
@@ -134,6 +139,35 @@ void setServo(Servo *servo, float degrees) {
     servo->write(fakeDegrees);
 }
 
+void changeMode(int switchState) {
+    
+    if(switchState == HIGH && mode != AUTO) { //only runs once every time auto gets swtiched on
+
+        holdDepth = depthSensor.depth();
+
+        if(pumpMode) {
+            pumpMode = false;
+        } else {
+            pumpMode = true;
+        }
+
+        mode = AUTO;
+        debugPrintln("mode switched to AUTO");
+
+    } else if(switchState == LOW && mode == AUTO) { //only runs once every time manual gets switched on
+        
+        turnOffAllDevices();
+        
+        if(pumpMode) {
+            mode = PUMP;
+            debugPrintln("mode switched to PUMP");
+        } else {
+            mode = ACTUATOR;
+            debugPrintln("mode switched to ACTUATOR");
+        }
+    }
+}
+
 void setInitialMode() { //note that this method only runs during the startup to determine the starting mode
 
     if(digitalRead(MODE_BUTTON_PIN) == HIGH) {
@@ -149,54 +183,6 @@ void setInitialMode() { //note that this method only runs during the startup to 
     reading = MODE_BUTTON_PIN;
     modeButtonState = MODE_BUTTON_PIN;
     lastModeButtonState = modeButtonState;
-}
-
-void setMode() { //used to change the mode during operation
-
-
-    long lastDebounceTime = 0;
-    long debounceDelay = 50;
-    reading = digitalRead(MODE_BUTTON_PIN);
-
-    if(reading != lastModeButtonState) {
-        lastDebounceTime = millis();
-    }
-
-    if((millis() - lastDebounceTime) > debounceDelay) {
-
-        if(reading != modeButtonState) {
-
-            modeButtonState = reading;
-
-            if(modeButtonState == HIGH && mode != AUTO) { //only runs once every time auto gets swtiched on
-
-                holdDepth = depthSensor.depth();
-
-                if(pumpMode) {
-                    pumpMode = false;
-                } else {
-                    pumpMode = true;
-                }
-
-                mode = AUTO;
-                debugPrintln("mode switched to AUTO");
-
-            } else if(modeButtonState == LOW && mode == AUTO) { //only runs once every time manual gets switched on
-               
-                turnOffAllDevices();
-                
-                if(pumpMode) {
-                    mode = PUMP;
-                    debugPrintln("mode switched to PUMP");
-                } else {
-                    mode = ACTUATOR;
-                    debugPrintln("mode switched to ACTUATOR");
-                }
-            }
-        }
-    }
-
-    lastModeButtonState = reading;
 }
 
 void processGyroData() {
@@ -475,8 +461,8 @@ void loop() {
 
     processLED();
 
-    setMode();
-
+    tickSwitch(&modeSwitch);
+    
     // char thing[100];
     // sprintf(thing, "Up button: %d. Down button: %d. Mode button: %d. Power button: %d.\n", digitalRead(BUTTON_1_PIN), digitalRead(BUTTON_2_PIN), digitalRead(MODE_BUTTON_PIN), digitalRead(POWER_BUTTON_PIN));
     // Serial.print(thing);
