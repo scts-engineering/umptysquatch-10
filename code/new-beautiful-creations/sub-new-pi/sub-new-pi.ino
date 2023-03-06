@@ -140,7 +140,7 @@ void setServo(Servo *servo, float degrees) {
 }
 
 void changeMode(int switchState) {
-    
+    Serial.println("I am changing the mode");
     if(switchState == HIGH && mode != AUTO) { //only runs once every time auto gets swtiched on
 
         holdDepth = depthSensor.depth();

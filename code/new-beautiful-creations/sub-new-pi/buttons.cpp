@@ -2,11 +2,10 @@
 #include <Arduino.h>
 
 void attachSwitch(DebouncedSwitch *sw, int pinNum, int debounceDelay, void (*callback)(int)) {
-    sw->lastDebounceTime = 0;
     sw->debounceDelay = debounceDelay;
-    sw->bounceCheckReading = 0;
-    sw->potentialReading = 0;
-    sw->realReading = 0;
+    sw->buttonState = 1;
+    sw->lastButtonState = 1;
+    sw->reading = 1;
   
     sw->pinNum = pinNum;
     sw->callback = callback;
@@ -14,22 +13,23 @@ void attachSwitch(DebouncedSwitch *sw, int pinNum, int debounceDelay, void (*cal
 }
 
 boolean tickSwitch(DebouncedSwitch *sw) {
-    sw->bounceCheckReading = digitalRead(sw->pinNum);
+
+    long lastDebounceTime = 0;
     
-    if(sw->potentialReading != sw->bounceCheckReading) {
-        sw->lastDebounceTime = millis();
+    sw->reading = digitalRead(sw->pinNum);
+        
+    if(sw->reading != sw->lastButtonState) {
+        lastDebounceTime = millis();
     }
     
-    if((millis() - sw->lastDebounceTime) > sw->debounceDelay) {
-        
-        if(sw->potentialReading != sw->realReading) {
+    if((millis() - lastDebounceTime) > sw->debounceDelay) {
+        if(sw->reading != sw->buttonState) {
             
-            sw->realReading = sw->potentialReading;
-            
-            sw->callback(sw->realReading);
-
+            sw->buttonState = sw->reading;
+            a
             return true;
         }
     }
+    sw->lastButtonState = sw->reading;
     return false;
 }
