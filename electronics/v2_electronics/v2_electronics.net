@@ -1,8 +1,8 @@
 (export (version "E")
   (design
     (source "/home/asdf/submarine/electronics/v2_electronics/v2_electronics.kicad_sch")
-    (date "Fri 10 Mar 2023 09:55:07 PM EST")
-    (tool "Eeschema (6.0.11)")
+    (date "Mon 13 Mar 2023 01:56:24 PM EDT")
+    (tool "Eeschema 6.0.11+dfsg-1")
     (sheet (number "1") (name "/") (tstamps "/")
       (title_block
         (title)
@@ -797,7 +797,7 @@
     (net (code "55") (name "Net-(Q5-Pad2)")
       (node (ref "Q5") (pin "2") (pinfunction "B") (pintype "input"))
       (node (ref "R11") (pin "2") (pintype "passive")))
-    (net (code "56") (name "Net-(R9-Pad2)")
+    (net (code "56") (name "Net-(Q6-Pad2)")
       (node (ref "Q6") (pin "2") (pinfunction "B") (pintype "input"))
       (node (ref "R9") (pin "2") (pintype "passive")))
     (net (code "57") (name "unconnected-(K1-Pad4)")
