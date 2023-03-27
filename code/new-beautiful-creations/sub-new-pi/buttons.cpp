@@ -26,7 +26,9 @@ boolean tickSwitch(DebouncedSwitch *sw) {
         if(sw->reading != sw->buttonState) {
             
             sw->buttonState = sw->reading;
-            a
+
+            sw->callback(sw->buttonState);
+            
             return true;
         }
     }
