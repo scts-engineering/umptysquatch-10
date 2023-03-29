@@ -281,7 +281,7 @@ void processDepthData() {
 void maintainEquilibrium() {
 
     float roll = (ypr[2] * 180 / M_PI);
-    Serial.println(roll);
+    //Serial.println(roll);
     depth = depthSensor.depth();
 
     if(roll < 2.5 && roll > -2.5 && depth < holdDepth + 1 && depth > holdDepth - 1) { //if the sub is in equalibrium then LED is set to SOLID
@@ -341,7 +341,7 @@ void maintainEquilibrium() {
 void processPumpInput() {
 
     if (digitalRead(BUTTON_1_PIN) == HIGH) {
-
+   
         digitalWrite(PUMP_A_PIN, HIGH);
         digitalWrite(PUMP_B_PIN, LOW);
 
@@ -362,7 +362,7 @@ void processActuatorInput() {
     digitalWrite(PUMP_B_PIN, LOW);
 
     if (digitalRead(BUTTON_1_PIN) == HIGH) {
-
+        Serial.println("hi");
         digitalWrite(ACTUATOR_A_PIN, HIGH);
         digitalWrite(ACTUATOR_B_PIN, LOW);
 

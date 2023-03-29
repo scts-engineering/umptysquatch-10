@@ -1,3 +1,6 @@
+//Button 1 = vent
+//Button 2 = blow
+
 //#define USE_OLD_PINS //old board
 //#define USE_NEW_PINS //board revision 1
 #define USE_PI_PINS
@@ -69,6 +72,25 @@
 #define SERVO_2_PIN 5
 #define SERVO_3_PIN 6
 #define SERVO_4_PIN 9
+#endif
+
+#ifdef USE_NEW_PI_PINS
+#define VENT_BUTTON_PIN 6 //Button1
+#define BLOW_BUTTON_PIN 8
+#define MODE_SWITCH_PIN 7
+#define DEPTH_LED_PIN 9
+#define ACTUATOR_A_PIN 2
+#define ACTUATOR_B_PIN 3
+#define PUMP_A_PIN 4
+#define PUMP_B_PIN 5
+#define JOYSTICK_X_PIN 26
+#define JOYSTICK_Y_PIN 27
+#define JOYSTICK_SDA JOYSTICK_X_PIN
+#define JOYSTICK_SCL JOYSTICK_Y_PIN
+#define SERVO_1_PIN 10
+#define SERVO_2_PIN 11
+#define SERVO_3_PIN 12
+#define SERVO_4_PIN 13
 #endif
 
 enum BlinkInterval {
