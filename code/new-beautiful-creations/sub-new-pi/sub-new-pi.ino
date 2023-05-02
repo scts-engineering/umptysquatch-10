@@ -13,7 +13,7 @@
 Servo servos[4];
 
 #ifdef USE_MAGNET_JOYSTICK
-Sodaq_LSM303AGR magnetometer;
+Sodaq_LSM303AGR magnetometer(Wire1);
 #endif
 
 MPU6050 gyroscope;
@@ -34,8 +34,7 @@ int reading;
 volatile bool mpuInterrupt = false;
 
 int blinkSpeed; //sets the blink interval of the LED
-long depth; // the current depth of the submarine
-long holdDepth; // the depth recorded after going into auto mode, must maintain this depth closely
+float holdDepth; // the depth recorded after going into auto mode, must maintain this depth closely
 
 long currentTime, previousTime;
 boolean isOn = false;
@@ -55,20 +54,28 @@ DebouncedSwitch modeSwitch;
 void setPinModes() {
 
     //set the pins to be either an input, or output
-    pinMode(BUTTON_1_PIN, INPUT); // labeled "blow/pump FWD", used to control the compressed air in actuator mode, or the FWD pump in pump mode
-    pinMode(BUTTON_2_PIN, INPUT); // labeled "vent/pump AFT", used to control the vent in actuator mode, or the AFT pump in pump mode
-    //pinMode(MODE_BUTTON_PIN, INPUT);
-    attachSwitch(&modeSwitch, MODE_BUTTON_PIN, 50, changeMode);
+    pinMode(VENT_BUTTON_PIN, INPUT); // labeled "vent/pump AFT", used to control the compressed air in actuator mode, or the FWD pump in pump mode
+    pinMode(BLOW_BUTTON_PIN, INPUT); // labeled "blow/pump FWD", used to control the vent in actuator mode, or the AFT pump in pump mode
+    //pinMode(MODE_SWITCH_PIN, INPUT);
+    attachSwitch(&modeSwitch, MODE_SWITCH_PIN, 50, changeMode);
     
-    pinMode(POWER_BUTTON_PIN, INPUT);
+ 
     pinMode(DEPTH_LED_PIN, OUTPUT);
     pinMode(PUMP_A_PIN, OUTPUT);
     pinMode(PUMP_B_PIN, OUTPUT);
     pinMode(ACTUATOR_A_PIN, OUTPUT);
     pinMode(ACTUATOR_B_PIN, OUTPUT);
    // pinMode(INTERRUPT_PIN, INPUT);
+
+#ifndef USE_MAGNET_JOYSTICK
     pinMode(JOYSTICK_X_PIN, INPUT);
     pinMode(JOYSTICK_Y_PIN, INPUT);
+    Serial.println("Set pin modes for analog joystick");
+#endif
+
+#ifdef MAIN_BAT_VOLTAGE
+    pinMode(MAIN_BAT_VOLTAGE, INPUT);
+#endif
 
     //set the servos to recieve pin input
     servos[0].attach(SERVO_1_PIN, 870, 2320);
@@ -87,10 +94,12 @@ void setupGyro() {
     debugPrintln("running gyroscope.initialize()");
     gyroscope.initialize();
 
+    Serial.println(gyroscope.testConnection() ? "Connection good" : "Connection bad");
+
+
     debugPrintln("running gyroscope.dmpInitalize()");
     //load and configure the DMP
     devStatus = gyroscope.dmpInitialize();
-    Serial.println(gyroscope.testConnection() ? "Connected" : "Connection failed");
 
     //TODO: see if these offsets need to be changed for maximum accuracy
     gyroscope.setXGyroOffset(220);
@@ -113,7 +122,8 @@ void setupGyro() {
 
         debugPrintln("Sucessful gyro initialization");
     } else {
-
+        //delay(1000);
+        //setupGyro(); // haha recursion temp
         debugPrintln("Failed gyro initialzation");
     }
 }
@@ -170,8 +180,9 @@ void changeMode(int switchState) {
 
 void setInitialMode() { //note that this method only runs during the startup to determine the starting mode
 
-    if(digitalRead(MODE_BUTTON_PIN) == HIGH) {
-        processDepthData();
+    if(digitalRead(MODE_SWITCH_PIN) == HIGH) {
+
+        depthSensor.read();
         holdDepth = depthSensor.depth();
         mode = AUTO;
         debugPrintln("initial mode set to AUTO");
@@ -180,8 +191,8 @@ void setInitialMode() { //note that this method only runs during the startup to 
         mode = PUMP; //if set to manual mode, the sub will default to pump mode
         debugPrintln("initial mode set to PUMP (manual default)");
     }
-    reading = MODE_BUTTON_PIN;
-    modeButtonState = MODE_BUTTON_PIN;
+    reading = MODE_SWITCH_PIN;
+    modeButtonState = MODE_SWITCH_PIN;
     lastModeButtonState = modeButtonState;
 }
 
@@ -208,16 +219,24 @@ void processGyroData() {
 
 #ifdef USE_MAGNET_JOYSTICK
 void setupMagnetometer() {
+
+    Serial.println("setting up magnetometer");
+
+    Serial.println(magnetometer.checkWhoAmI() ? "Found magnetometer" : "No magnetometer!!!");
     
     magnetometer.rebootMagnetometer();
+    Serial.println("done rebooting magnetometer");
     delay(1000);
     magnetometer.enableMagnetometer(Sodaq_LSM303AGR::MagHighResMode, Sodaq_LSM303AGR::Hz100, Sodaq_LSM303AGR::Continuous);
+    Serial.println("done with enableMagnetometer()");
     uint8_t axes = Sodaq_LSM303AGR::MagX;
     magnetometer.enableMagnetometerInterrupt(axes, -400);
 
 //sets zero of magnetometer, used for correction of dimensional offset
     magCalX = magnetometer.getMagX(); 
     magCalY = magnetometer.getMagY();
+
+    Serial.println("done setting up magnetometer (idk if it works though)");
 }
 #endif
 
@@ -228,11 +247,11 @@ void processSteering() { // read the joystick, then set the servo angles
 #ifdef USE_MAGNET_JOYSTICK
     float x = (magnetometer.getMagX() - magCalX) / 3000;
     float y = (magnetometer.getMagY() - magCalY) / 3000;
-#ifdef DEBUG
+//#ifdef DEBUG
     Serial.print(x);
     Serial.print(" ");
     Serial.println(y);
-#endif
+//#endif
 
 #else
     float x = (analogRead(JOYSTICK_X_PIN) - 512) / 512.0f;
@@ -273,22 +292,34 @@ void processSteering() { // read the joystick, then set the servo angles
     }
 }
 
-void processDepthData() {
-    depthSensor.read();
-    Serial.println(depthSensor.depth());
-}
 
 void maintainEquilibrium() {
 
     float roll = (ypr[2] * 180 / M_PI);
     //Serial.println(roll);
-    depth = depthSensor.depth();
+    depthSensor.read();
+    float depth = depthSensor.depth();
+    Serial.print("Depth: ");
+    Serial.println(depth);
+    Serial.print("holdDepth: ");
+    Serial.println(holdDepth);
+    DepthState isDepthOff;
 
-    if(roll < 2.5 && roll > -2.5 && depth < holdDepth + 1 && depth > holdDepth - 1) { //if the sub is in equalibrium then LED is set to SOLID
+    if(depth < holdDepth + 1 && depth > holdDepth - 1) {
+        isDepthOff = STEADY;  
+    } else {
+        if(depth < holdDepth + 1) isDepthOff = TOO_LOW;
+        if(depth > holdDepth - 1) isDepthOff = TOO_HIGH;
+    }
+
+    if(roll < 2.5 && roll > -2.5 && !isDepthOff) { //if the sub is in equalibrium then LED is set to SOLID
         blinkInterval = SOLID;
     } else { // if its not in equalibrium then it blinks the LED with SLOW interval
         blinkInterval = SLOW;
     }
+
+    Serial.print("Roll: ");
+    Serial.println(roll);
 
     if ((roll) < 2.5 and (roll) > -2.5) {
 
@@ -311,8 +342,8 @@ void maintainEquilibrium() {
     //TODO: depth offset equilibrium needs to be figured out(1 meter for temporary solution)
 
     //if there is a depth offset sync the appropriate actuator to the blinking of the LED
-    if(depth > holdDepth + 1) { //if the sub is to high, which activates the vent
-        Serial.println("hi");
+    if(isDepthOff == TOO_HIGH) { //if the sub is too high, which activates the vent
+       // Serial.println("hi");
         if(isOn) {
             digitalWrite(ACTUATOR_A_PIN, HIGH); 
             digitalWrite(ACTUATOR_B_PIN, LOW);
@@ -321,7 +352,7 @@ void maintainEquilibrium() {
             digitalWrite(ACTUATOR_B_PIN, LOW);
         }
 
-    } else if(depth < holdDepth - 1) { //if the sub is to low, which activates the blow
+    } else if(isDepthOff == TOO_LOW) { //if the sub is too low, which activates the blow
 
         if(isOn) {
             digitalWrite(ACTUATOR_A_PIN, LOW);
@@ -332,7 +363,7 @@ void maintainEquilibrium() {
         }
 
     } else {
-
+        Serial.println("both off");
         digitalWrite(ACTUATOR_A_PIN, LOW);
         digitalWrite(ACTUATOR_B_PIN, LOW);
     }
@@ -340,12 +371,12 @@ void maintainEquilibrium() {
 
 void processPumpInput() {
 
-    if (digitalRead(BUTTON_1_PIN) == HIGH) {
+    if (digitalRead(VENT_BUTTON_PIN) == HIGH) {
    
         digitalWrite(PUMP_A_PIN, HIGH);
         digitalWrite(PUMP_B_PIN, LOW);
 
-    } else if (digitalRead(BUTTON_2_PIN) == HIGH) {
+    } else if (digitalRead(BLOW_BUTTON_PIN) == HIGH) {
 
         digitalWrite(PUMP_A_PIN, LOW);
         digitalWrite(PUMP_B_PIN, HIGH);
@@ -361,12 +392,12 @@ void processActuatorInput() {
     digitalWrite(PUMP_A_PIN, LOW); //change this to be better 
     digitalWrite(PUMP_B_PIN, LOW);
 
-    if (digitalRead(BUTTON_1_PIN) == HIGH) {
+    if (digitalRead(VENT_BUTTON_PIN) == HIGH) {
         Serial.println("hi");
         digitalWrite(ACTUATOR_A_PIN, HIGH);
         digitalWrite(ACTUATOR_B_PIN, LOW);
 
-    } else if (digitalRead(BUTTON_2_PIN) == HIGH) {
+    } else if (digitalRead(BLOW_BUTTON_PIN) == HIGH) {
 
         digitalWrite(ACTUATOR_A_PIN, LOW);
         digitalWrite(ACTUATOR_B_PIN, HIGH);
@@ -380,9 +411,9 @@ void processActuatorInput() {
 
 void processLED() {
  
-  if(blinkInterval == 0) {
+  if(blinkInterval == SOLID) {
       if(!isOn) {
-        digitalWrite(12, HIGH);
+        digitalWrite(DEPTH_LED_PIN, HIGH);
         isOn = true;
       }
   } else {
@@ -390,10 +421,10 @@ void processLED() {
   
     if(currentTime > previousTime + blinkInterval) {
         if(isOn) {
-          digitalWrite(12, LOW);
+          digitalWrite(DEPTH_LED_PIN, LOW);
           isOn = false;
         } else {
-          digitalWrite(12, HIGH);
+          digitalWrite(DEPTH_LED_PIN, HIGH);
           isOn = true;
         }
     
@@ -411,9 +442,17 @@ void turnOffAllDevices() {
 
 void setup() {
     Serial.begin(9600);
-    Wire.setSDA(20);
-    Wire.setSCL(21);
+    Wire.setSDA(0);
+    Wire.setSCL(1);
     Wire.begin();
+#ifdef USE_MAGNET_JOYSTICK
+    Wire1.setSDA(JOYSTICK_SDA);
+    Wire1.setSCL(JOYSTICK_SCL);
+    Wire1.begin();
+    delay(5000);
+    Serial.println("initialized wire1 for magnetometer");
+#endif
+    //Wire.setClock(100000);
     delay(5000);
     Serial.println("hello there");
     //return;
@@ -441,11 +480,14 @@ void setup() {
 
 void loop() {
 
+    // temporary battery voltage reading thing (NOT CALIBRATED AT ALL!!!!)
+    /*int batVoltageReading = analogRead(MAIN_BAT_VOLTAGE_PIN);
+    Serial.print("12v supply: ");
+    Serial.println((float)batVoltageReading/54);*/
+
     if(mode == AUTO) {
 
         processGyroData();
-
-        processDepthData();
 
         maintainEquilibrium();
     } else if(mode == PUMP) {
@@ -464,7 +506,7 @@ void loop() {
     tickSwitch(&modeSwitch);
     
     // char thing[100];
-    // sprintf(thing, "Up button: %d. Down button: %d. Mode button: %d. Power button: %d.\n", digitalRead(BUTTON_1_PIN), digitalRead(BUTTON_2_PIN), digitalRead(MODE_BUTTON_PIN), digitalRead(POWER_BUTTON_PIN));
+    // sprintf(thing, "Up button: %d. Down button: %d. Mode button: %d. Power button: %d.\n", digitalRead(VENT_BUTTON_PIN), digitalRead(BLOW_BUTTON_PIN), digitalRead(MODE_SWITCH_PIN), digitalRead(POWER_BUTTON_PIN));
     // Serial.print(thing);
     
 }

@@ -3,9 +3,10 @@
 
 //#define USE_OLD_PINS //old board
 //#define USE_NEW_PINS //board revision 1
-#define USE_PI_PINS
+#define USE_NEW_PI_PINS
+//#define USE_NEW_PI_PINS
 
-//#define USE_MAGNET_JOYSTICK
+#define USE_MAGNET_JOYSTICK
 //#define ENABLE_AUTO_PUMPS
 
 #define DEBUG
@@ -21,10 +22,9 @@
 
 #ifdef USE_OLD_PINS
 #define INTERRUPT_PIN 2
-#define UP_BUTTON_PIN 4
-#define DOWN_BUTTON_PIN A1
+#define BLOW_BUTTON_PIN 4
+#define VENT_BUTTON_PIN A1
 #define MODE_BUTTON_PIN A0
-#define POWER_BUTTON_PIN 13
 #define DEPTH_LED_PIN 0
 #define ACTUATOR_A_PIN 8
 #define ACTUATOR_B_PIN 7
@@ -39,10 +39,9 @@
 #endif
 
 #ifdef USE_NEW_PINS
-#define BUTTON_1_PIN 11
-#define BUTTON_2_PIN 10
+#define VENT_BUTTON_PIN 11
+#define BLOW_BUTTON_PIN 10
 #define MODE_BUTTON_PIN 8
-#define POWER_BUTTON_PIN 7
 #define DEPTH_LED_PIN 12
 #define ACTUATOR_A_PIN 13
 #define ACTUATOR_B_PIN A0
@@ -57,10 +56,9 @@
 #endif
 
 #ifdef USE_PI_PINS
-#define BUTTON_1_PIN 11
-#define BUTTON_2_PIN 10
-#define MODE_BUTTON_PIN 8
-#define POWER_BUTTON_PIN 7
+#define VENT_BUTTON_PIN 10
+#define BLOW_BUTTON_PIN 11
+#define MODE_SWITCH_PIN 8
 #define DEPTH_LED_PIN 12
 #define ACTUATOR_A_PIN 13
 #define ACTUATOR_B_PIN 14
@@ -76,7 +74,7 @@
 
 #ifdef USE_NEW_PI_PINS
 #define VENT_BUTTON_PIN 6 //Button1
-#define BLOW_BUTTON_PIN 8
+#define BLOW_BUTTON_PIN 8 //Button2
 #define MODE_SWITCH_PIN 7
 #define DEPTH_LED_PIN 9
 #define ACTUATOR_A_PIN 2
@@ -91,6 +89,7 @@
 #define SERVO_2_PIN 11
 #define SERVO_3_PIN 12
 #define SERVO_4_PIN 13
+#define MAIN_BAT_VOLTAGE_PIN 28
 #endif
 
 enum BlinkInterval {
@@ -103,4 +102,10 @@ enum Mode {
     AUTO,
     PUMP,
     ACTUATOR
+};
+
+enum DepthState {
+    STEADY = 0,
+    TOO_HIGH = 1,
+    TOO_LOW = -1
 };

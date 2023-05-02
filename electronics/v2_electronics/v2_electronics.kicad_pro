@@ -385,7 +385,7 @@
       "idf": "",
       "netlist": "v2_electronics.net",
       "specctra_dsn": "",
-      "step": "",
+      "step": "../../../v2_electronics.step",
       "vrml": ""
     },
     "page_layout_descr_file": ""
