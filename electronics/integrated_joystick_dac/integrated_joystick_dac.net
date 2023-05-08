@@ -1,8 +1,8 @@
 (export (version "E")
   (design
-    (source "/home/asdf/submarine/electronics/integrated_joystick_dac/integrated_joystick_dac.kicad_sch")
-    (date "Sat 06 May 2023 11:58:54 PM EDT")
-    (tool "Eeschema 7.0.1")
+    (source "C:\\Users\\asdf\\Desktop\\GIT-sub\\electronics\\integrated_joystick_dac\\integrated_joystick_dac.kicad_sch")
+    (date "5/8/2023 2:06:30 PM")
+    (tool "Eeschema 7.0.2")
     (sheet (number "1") (name "/") (tstamps "/")
       (title_block
         (title)
@@ -249,13 +249,13 @@
         (pin (num "40") (name "VBUS") (type "bidirectional")))))
   (libraries
     (library (logical "Analog_DAC")
-      (uri "/usr/share/kicad/symbols//Analog_DAC.kicad_sym"))
+      (uri "C:\\Program Files\\KiCad\\7.0\\share\\kicad\\symbols\\/Analog_DAC.kicad_sym"))
     (library (logical "Connector_Generic")
-      (uri "/usr/share/kicad/symbols//Connector_Generic.kicad_sym"))
+      (uri "C:\\Program Files\\KiCad\\7.0\\share\\kicad\\symbols\\/Connector_Generic.kicad_sym"))
     (library (logical "Device")
-      (uri "/usr/share/kicad/symbols//Device.kicad_sym"))
+      (uri "C:\\Program Files\\KiCad\\7.0\\share\\kicad\\symbols\\/Device.kicad_sym"))
     (library (logical "custom_parts")
-      (uri "/home/asdf/submarine/electronics/integrated_joystick_dac/custom_parts.kicad_sym")))
+      (uri "C:\\Users\\asdf\\Desktop\\GIT-sub\\electronics\\integrated_joystick_dac/custom_parts.kicad_sym")))
   (nets
     (net (code "1") (name "/+3V3")
       (node (ref "C1") (pin "1") (pintype "passive"))

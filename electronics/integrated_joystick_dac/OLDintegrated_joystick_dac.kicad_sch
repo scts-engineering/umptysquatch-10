@@ -886,8 +886,8 @@
     (property "Datasheet" "~" (at 137.16 64.77 0)
       (effects (font (size 1.27 1.27)) hide)
     )
-    (pin "1" (uuid 3176e0b6-4cf2-4d9a-b398-062bf6ff0510))
-    (pin "2" (uuid 39c2dc41-4162-47b8-9305-2106e07d6ab0))
+    (pin "1" (uuid 2fc98118-4836-43d4-8da8-1d9b27a4327f))
+    (pin "2" (uuid fe932db0-2752-4943-b49f-af397286611b))
     (instances
       (project "integrated_joystick_dac"
         (path "/057e3885-9162-4cde-bf2e-e929ed3bc16b"
@@ -1191,8 +1191,8 @@
     (property "Datasheet" "~" (at 137.16 76.2 0)
       (effects (font (size 1.27 1.27)) hide)
     )
-    (pin "1" (uuid 1f6dbcea-6731-4e7a-b5df-a133f7cbcb3c))
-    (pin "2" (uuid 95cc3673-6601-4a52-bb2c-f9ee594d1d8d))
+    (pin "1" (uuid 6bd53d89-a17e-489b-9703-60de622bb953))
+    (pin "2" (uuid d05395ec-0430-439a-9ce9-9b17f86c1c3c))
     (instances
       (project "integrated_joystick_dac"
         (path "/057e3885-9162-4cde-bf2e-e929ed3bc16b"
@@ -1242,7 +1242,7 @@
     (property "Datasheet" "" (at 144.78 76.2 0)
       (effects (font (size 1.27 1.27)) hide)
     )
-    (pin "1" (uuid ed3ae304-1895-4215-b705-48b88f4bfa6d))
+    (pin "1" (uuid 3c844650-d8c4-4fd1-ba32-95b0bbe2bd4b))
     (instances
       (project "integrated_joystick_dac"
         (path "/057e3885-9162-4cde-bf2e-e929ed3bc16b"
