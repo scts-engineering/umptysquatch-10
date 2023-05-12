@@ -10,11 +10,11 @@
 #include "shared/submarine.h"
 #include "buttons.h"
 
-Servo servos[4];
+extern "C" {
+  #include <hardware/watchdog.h>
+};
 
-#ifdef USE_MAGNET_JOYSTICK
-Sodaq_LSM303AGR magnetometer(Wire1);
-#endif
+Servo servos[4];
 
 MPU6050 gyroscope;
 
@@ -23,9 +23,6 @@ MS5837 depthSensor;
 uint8_t mpuIntStatus;
 uint16_t packetSize;
 float ypr[3];
-
-double magCalX = 0;
-double magCalY = 0;
 
 int modeButtonState;
 int lastModeButtonState;
@@ -56,22 +53,18 @@ void setPinModes() {
     //set the pins to be either an input, or output
     pinMode(VENT_BUTTON_PIN, INPUT); // labeled "vent/pump AFT", used to control the compressed air in actuator mode, or the FWD pump in pump mode
     pinMode(BLOW_BUTTON_PIN, INPUT); // labeled "blow/pump FWD", used to control the vent in actuator mode, or the AFT pump in pump mode
-    //pinMode(MODE_SWITCH_PIN, INPUT);
+
     attachSwitch(&modeSwitch, MODE_SWITCH_PIN, 50, changeMode);
-    
  
     pinMode(DEPTH_LED_PIN, OUTPUT);
     pinMode(PUMP_A_PIN, OUTPUT);
     pinMode(PUMP_B_PIN, OUTPUT);
     pinMode(ACTUATOR_A_PIN, OUTPUT);
     pinMode(ACTUATOR_B_PIN, OUTPUT);
-   // pinMode(INTERRUPT_PIN, INPUT);
 
-#ifndef USE_MAGNET_JOYSTICK
     pinMode(JOYSTICK_X_PIN, INPUT);
     pinMode(JOYSTICK_Y_PIN, INPUT);
     Serial.println("Set pin modes for analog joystick");
-#endif
 
 #ifdef MAIN_BAT_VOLTAGE
     pinMode(MAIN_BAT_VOLTAGE, INPUT);
@@ -217,48 +210,14 @@ void processGyroData() {
     }
 }
 
-#ifdef USE_MAGNET_JOYSTICK
-void setupMagnetometer() {
-
-    Serial.println("setting up magnetometer");
-
-    Serial.println(magnetometer.checkWhoAmI() ? "Found magnetometer" : "No magnetometer!!!");
-    
-    magnetometer.rebootMagnetometer();
-    Serial.println("done rebooting magnetometer");
-    delay(1000);
-    magnetometer.enableMagnetometer(Sodaq_LSM303AGR::MagHighResMode, Sodaq_LSM303AGR::Hz100, Sodaq_LSM303AGR::Continuous);
-    Serial.println("done with enableMagnetometer()");
-    uint8_t axes = Sodaq_LSM303AGR::MagX;
-    magnetometer.enableMagnetometerInterrupt(axes, -400);
-
-//sets zero of magnetometer, used for correction of dimensional offset
-    magCalX = magnetometer.getMagX(); 
-    magCalY = magnetometer.getMagY();
-
-    Serial.println("done setting up magnetometer (idk if it works though)");
-}
-#endif
-
 void processSteering() { // read the joystick, then set the servo angles
 
     float servoAngles[4];
 
-#ifdef USE_MAGNET_JOYSTICK
-    float x = (magnetometer.getMagX() - magCalX) / 3000;
-    float y = (magnetometer.getMagY() - magCalY) / 3000;
-//#ifdef DEBUG
-    Serial.print(x);
-    Serial.print(" ");
-    Serial.println(y);
-//#endif
-
-#else
     float x = (analogRead(JOYSTICK_X_PIN) - 512) / 512.0f;
     float y = (analogRead(JOYSTICK_Y_PIN) - 512) / 512.0f;
     // if it goes the opposite x direction remove this
     x = -x;
-#endif
 
     int deadMin = 85;
     int deadMax = 95;
@@ -296,7 +255,7 @@ void processSteering() { // read the joystick, then set the servo angles
 void maintainEquilibrium() {
 
     float roll = (ypr[2] * 180 / M_PI);
-    //Serial.println(roll);
+    Serial.println(roll);
     depthSensor.read();
     float depth = depthSensor.depth();
     Serial.print("Depth: ");
@@ -442,18 +401,14 @@ void turnOffAllDevices() {
 
 void setup() {
     Serial.begin(9600);
+     if(watchdog_caused_reboot()) { delay(5000); }
     Wire.setSDA(0);
     Wire.setSCL(1);
     Wire.begin();
-#ifdef USE_MAGNET_JOYSTICK
-    Wire1.setSDA(JOYSTICK_SDA);
-    Wire1.setSCL(JOYSTICK_SCL);
-    Wire1.begin();
-    delay(5000);
-    Serial.println("initialized wire1 for magnetometer");
-#endif
+
     //Wire.setClock(100000);
-    delay(5000);
+    //delay(5000);
+
     Serial.println("hello there");
     //return;
     
@@ -469,16 +424,15 @@ void setup() {
     setupDepthSensor();
     Serial.println("I am done setting up depth sensor");
 
-#ifdef USE_MAGNET_JOYSTICK
-    setupMagnetometer();
-    Serial.println("I am done setting up the magnetometer");
-#endif
-
     setInitialMode();
+
+        watchdog_enable(2000, 1);
+
    Serial.println("I am done setting up");
 }
 
 void loop() {
+        watchdog_update();
 
     // temporary battery voltage reading thing (NOT CALIBRATED AT ALL!!!!)
     /*int batVoltageReading = analogRead(MAIN_BAT_VOLTAGE_PIN);
@@ -504,9 +458,5 @@ void loop() {
     processLED();
 
     tickSwitch(&modeSwitch);
-    
-    // char thing[100];
-    // sprintf(thing, "Up button: %d. Down button: %d. Mode button: %d. Power button: %d.\n", digitalRead(VENT_BUTTON_PIN), digitalRead(BLOW_BUTTON_PIN), digitalRead(MODE_SWITCH_PIN), digitalRead(POWER_BUTTON_PIN));
-    // Serial.print(thing);
     
 }

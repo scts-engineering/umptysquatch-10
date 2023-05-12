@@ -4,9 +4,7 @@
 //#define USE_OLD_PINS //old board
 //#define USE_NEW_PINS //board revision 1
 #define USE_NEW_PI_PINS
-//#define USE_NEW_PI_PINS
 
-#define USE_MAGNET_JOYSTICK
 //#define ENABLE_AUTO_PUMPS
 
 #define DEBUG
