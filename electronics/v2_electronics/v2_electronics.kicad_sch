@@ -6,7 +6,9 @@
 
   (title_block
     (title "Umptysquatch X Electronics")
+    (date "4/9/2023")
     (rev "2")
+    (company "Sussex Tech Engineering")
   )
 
   (lib_symbols
@@ -3582,10 +3584,6 @@
   (text "Button pulldown resistors" (at 19.05 128.27 0)
     (effects (font (size 1.27 1.27)) (justify left bottom))
     (uuid 6f647fa6-f399-44a4-af3f-5cd00c826088)
-  )
-  (text "check servo numbers!!" (at 101.6 121.92 0)
-    (effects (font (size 1.27 1.27)) (justify left bottom))
-    (uuid b4e81f45-8552-4792-ba57-d24389cf70d2)
   )
   (text "High-side driver for external LED" (at 191.77 125.73 0)
     (effects (font (size 1.27 1.27)) (justify left bottom))

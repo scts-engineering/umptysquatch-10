@@ -2,10 +2,13 @@
 
   (uuid 057e3885-9162-4cde-bf2e-e929ed3bc16b)
 
-  (paper "A4")
+  (paper "A")
 
   (title_block
     (title "Joystick DAC Board - Schematic")
+    (date "5/12/2023")
+    (rev "1")
+    (company "Sussex Tech Engineering")
   )
 
   (lib_symbols
