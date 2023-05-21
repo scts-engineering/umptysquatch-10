@@ -43,7 +43,6 @@ boolean pumpMode = true; //always defaults to pump mode for the first time it is
 
 void dmpDataReady() {
     mpuInterrupt = true;
-    //Serial.println("dmp data ready called");
 }
 
 DebouncedSwitch modeSwitch;
@@ -302,7 +301,7 @@ void maintainEquilibrium() {
 
     //if there is a depth offset sync the appropriate actuator to the blinking of the LED
     if(isDepthOff == TOO_HIGH) { //if the sub is too high, which activates the vent
-       // Serial.println("hi");
+
         if(isOn) {
             digitalWrite(ACTUATOR_A_PIN, HIGH); 
             digitalWrite(ACTUATOR_B_PIN, LOW);
