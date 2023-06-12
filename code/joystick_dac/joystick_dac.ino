@@ -11,11 +11,11 @@ double magCalX = 0;
 double magCalY = 0;
 
 void setup() {
-
-    dac.begin();
-
+  
+    dac.begin(0x61);
+    
     magnetometer.rebootMagnetometer();
-
+    delay(1000);
     magnetometer.enableMagnetometer(Sodaq_LSM303AGR::MagHighResMode, Sodaq_LSM303AGR::Hz100, Sodaq_LSM303AGR::Continuous);
 
     uint8_t axes = Sodaq_LSM303AGR::MagX;
@@ -31,14 +31,16 @@ void loop() {
 
     float x = (magnetometer.getMagX() - magCalX) / 3000;
     float y = (magnetometer.getMagY() - magCalY) / 3000;
-    if(x > 1) x = 1; else if(x < -1) x = -1;
-    if(y > 1) x = 1; else if(y < -1) y = -1;
 
     // convert -1 to 1 normalized values into 0-4096
     x *= 2048;
     y *= 2048;
     x += 2048;
     y += 2048;
+
+    if(x > 4095) x = 4095; if(x < 0) x = 0;
+    if(y > 4095) y = 4095; if(y < 0) y = 0; 
+    
     dac.setChannelValue(MCP4728_CHANNEL_A, x);
     dac.setChannelValue(MCP4728_CHANNEL_B, y);
 }

@@ -9,6 +9,7 @@
 
 #include "shared/submarine.h"
 #include "buttons.h"
+#include "Moving_Average.h"
 
 extern "C" {
   #include <hardware/watchdog.h>
@@ -24,28 +25,38 @@ uint8_t mpuIntStatus;
 uint16_t packetSize;
 float ypr[3];
 
-int modeButtonState;
-int lastModeButtonState;
-int reading;
-
 volatile bool mpuInterrupt = false;
 
 int blinkSpeed; //sets the blink interval of the LED
 float holdDepth; // the depth recorded after going into auto mode, must maintain this depth closely
 
 long currentTime, previousTime;
-boolean isOn = false;
+
 
 BlinkInterval blinkInterval;
 Mode mode;
 
 boolean pumpMode = true; //always defaults to pump mode for the first time it is put into manual mode
 
-void dmpDataReady() {
-    mpuInterrupt = true;
+DebouncedSwitch modeSwitch;
+
+float floatArrMean(float arr[], int size) {
+    float value;
+    for(int i = 0; i < size; ++i) {
+        value += arr[i];  
+    }
+    return value / size;
 }
 
-DebouncedSwitch modeSwitch;
+void setPumps(bool fwd, bool aft) {
+    digitalWrite(PUMP_A_PIN, fwd ? HIGH : LOW);
+    digitalWrite(PUMP_B_PIN, aft ? HIGH : LOW);
+}
+
+void setActuators(bool vent, bool blow) {
+    digitalWrite(ACTUATOR_A_PIN, vent ? HIGH : LOW);
+    digitalWrite(ACTUATOR_B_PIN, blow ? HIGH : LOW);
+}
 
 void setPinModes() {
 
@@ -69,11 +80,21 @@ void setPinModes() {
     pinMode(MAIN_BAT_VOLTAGE, INPUT);
 #endif
 
+    // set servos to resting position from the start
+
+    setServo(&servos[0], 90);
+    setServo(&servos[1], 90);
+    setServo(&servos[2], 90);
+    setServo(&servos[3], 90);
+    
     //set the servos to recieve pin input
     servos[0].attach(SERVO_1_PIN, 870, 2320);
     servos[1].attach(SERVO_2_PIN, 870, 2320);
     servos[2].attach(SERVO_3_PIN, 870, 2320);
     servos[3].attach(SERVO_4_PIN, 870, 2320);
+
+
+    
 }
 
 void setupGyro() {
@@ -104,6 +125,9 @@ void setupGyro() {
 
         //TODO: Might need gyro calibration methods if results are off
 
+        gyroscope.CalibrateAccel(6);
+        gyroscope.CalibrateGyro(6);
+
         gyroscope.setDMPEnabled(true);
 
         mpuIntStatus = gyroscope.getIntStatus();
@@ -114,8 +138,6 @@ void setupGyro() {
 
         debugPrintln("Sucessful gyro initialization");
     } else {
-        //delay(1000);
-        //setupGyro(); // haha recursion temp
         debugPrintln("Failed gyro initialzation");
     }
 }
@@ -130,7 +152,7 @@ void setupDepthSensor() {
         debugPrintln("depth sensor initilized successfully");
     }
     
-    // depthSensor.setModel(MS5837::MS5837_30BA); // set depth sensor model to the MS5837, 30 bar
+    depthSensor.setModel(MS5837::MS5837_30BA); // set depth sensor model to the MS5837, 30 bar
     depthSensor.setFluidDensity(997); // set fluid density to 997 kilograms per meter cubed (freshwater)
 }
 
@@ -145,6 +167,7 @@ void changeMode(int switchState) {
     Serial.println("I am changing the mode");
     if(switchState == HIGH && mode != AUTO) { //only runs once every time auto gets swtiched on
 
+        depthSensor.read();
         holdDepth = depthSensor.depth();
 
         if(pumpMode) {
@@ -170,22 +193,8 @@ void changeMode(int switchState) {
     }
 }
 
-void setInitialMode() { //note that this method only runs during the startup to determine the starting mode
-
-    if(digitalRead(MODE_SWITCH_PIN) == HIGH) {
-
-        depthSensor.read();
-        holdDepth = depthSensor.depth();
-        mode = AUTO;
-        debugPrintln("initial mode set to AUTO");
-
-    } else {
-        mode = PUMP; //if set to manual mode, the sub will default to pump mode
-        debugPrintln("initial mode set to PUMP (manual default)");
-    }
-    reading = MODE_SWITCH_PIN;
-    modeButtonState = MODE_SWITCH_PIN;
-    lastModeButtonState = modeButtonState;
+void setInitialMode() { // note that this method only runs during the startup to determine the starting mode
+    changeMode(digitalRead(MODE_SWITCH_PIN));
 }
 
 void processGyroData() {
@@ -209,6 +218,17 @@ void processGyroData() {
     }
 }
 
+bool isLedOn = false;
+
+void setLEDPWM(float pwmVal) {
+    analogWrite(DEPTH_LED_PIN, pwmVal);    
+}
+
+void setLED(bool on) {
+    digitalWrite(DEPTH_LED_PIN, on ? HIGH : LOW);
+    isLedOn = on;
+}
+
 void processSteering() { // read the joystick, then set the servo angles
 
     float servoAngles[4];
@@ -218,25 +238,50 @@ void processSteering() { // read the joystick, then set the servo angles
     // if it goes the opposite x direction remove this
     x = -x;
 
-    int deadMin = 85;
-    int deadMax = 95;
-    int minAngle = 45; //minimum angle required for x-pattern
-    int maxAngle = 135; //maximum angle required for x-pattern
+    const float deadSize = 0.4f;
+    if(x < deadSize && x > -deadSize && y < deadSize && y > -deadSize) { x = 0; y = 0;}
+    
+    static float valuesX[1000];
+    static float valuesY[1000];
+    static int valuesIndex;
+    valuesX[valuesIndex] = x;
+    valuesY[valuesIndex++] = y;
 
-    servoAngles[0] = (atan(x - y) * -180 / PI) + 90;
-    servoAngles[1] = (atan(x + y) * -180 / PI) + 90;
-    servoAngles[2] = (atan(y - x) * -180 / PI) + 90;
-    servoAngles[3] = (atan(x + y) * 180 / PI) + 90;
+    static Moving_Average<float, double, 20> maX;
+    static Moving_Average<float, double, 20> maY;
 
-    for (int i = 0; i < arraylength(servos); i++ ) {
+    if(valuesIndex == 1000) {
+
+      valuesIndex = 0;
+
+      x = floatArrMean(valuesX, 1000);
+      y = floatArrMean(valuesY, 1000);
+
+      x = maX(x);
+      y = maY(y);
+    
+    /*Serial.print(x);
+    Serial.print(" ");
+    Serial.println(y);*/
+    
+
+    const float angleTEMP = 7.f;
+    const float divisorTEMP = 1 / (angleTEMP * (1.f/45.f));
+    const int minAngle = 45; //minimum angle required for x-pattern
+    const int maxAngle = 135; //maximum angle required for x-pattern
+
+    servoAngles[0] = ((atan(x - y) * -180 / PI) / divisorTEMP) + 90;
+    servoAngles[1] = ((atan(x + y) * -180 / PI) / divisorTEMP) + 90;
+    servoAngles[2] = ((atan(y - x) * -180 / PI) / divisorTEMP) + 90;
+    servoAngles[3] = ((atan(x + y) * 180 / PI) / divisorTEMP) + 90;
+   
+    for (int i = 0; i < arraylength(servos); i++) {
 
         if (servoAngles[i] > maxAngle){
             servoAngles[i] = maxAngle;
         } else if (servoAngles[i] < minAngle) {
             servoAngles[i] = minAngle;
         }
-
-        if (servoAngles[i] > deadMin && servoAngles[i] < deadMax) servoAngles[i] = 90;
 
         servoAngles[i] = round(servoAngles[i]);
 
@@ -248,19 +293,22 @@ void processSteering() { // read the joystick, then set the servo angles
 #endif
         setServo(&servos[i], servoAngles[i]);
     }
+  }
+
+
 }
 
 
 void maintainEquilibrium() {
 
     float roll = (ypr[2] * 180 / M_PI);
-    Serial.println(roll);
     depthSensor.read();
     float depth = depthSensor.depth();
     Serial.print("Depth: ");
-    Serial.println(depth);
-    Serial.print("holdDepth: ");
+    Serial.print(depth);
+    Serial.print("   holdDepth: ");
     Serial.println(holdDepth);
+
     DepthState isDepthOff;
 
     if(depth < holdDepth + 1 && depth > holdDepth - 1) {
@@ -279,51 +327,37 @@ void maintainEquilibrium() {
     Serial.print("Roll: ");
     Serial.println(roll);
 
-    if ((roll) < 2.5 and (roll) > -2.5) {
-
-        digitalWrite(PUMP_A_PIN, LOW);
-        digitalWrite(PUMP_B_PIN, LOW);
+    if (roll < 2.5 && roll > -2.5) {
+        setPumps(false, false);
     }
 
-    if ((roll) > 2.5) {
-
-        digitalWrite(PUMP_A_PIN, HIGH);
-        digitalWrite(PUMP_B_PIN, LOW);
+    if (roll > 2.5) {
+        setPumps(true, false);
     }
 
-    if ((roll) < -2.5) {
-
-        digitalWrite(PUMP_A_PIN, LOW);
-        digitalWrite(PUMP_B_PIN, HIGH);
+    if (roll < -2.5) {
+        setPumps(false, true);
     }
-
-    //TODO: depth offset equilibrium needs to be figured out(1 meter for temporary solution)
 
     //if there is a depth offset sync the appropriate actuator to the blinking of the LED
     if(isDepthOff == TOO_HIGH) { //if the sub is too high, which activates the vent
 
-        if(isOn) {
-            digitalWrite(ACTUATOR_A_PIN, HIGH); 
-            digitalWrite(ACTUATOR_B_PIN, LOW);
+        if(isLedOn) {
+            setActuators(true, false);
         } else {
-            digitalWrite(ACTUATOR_A_PIN, LOW);
-            digitalWrite(ACTUATOR_B_PIN, LOW);
+            setActuators(false, false);
         }
 
     } else if(isDepthOff == TOO_LOW) { //if the sub is too low, which activates the blow
 
-        if(isOn) {
-            digitalWrite(ACTUATOR_A_PIN, LOW);
-            digitalWrite(ACTUATOR_B_PIN, HIGH);
+        if(isLedOn) {
+            setActuators(false, true);
         } else {
-            digitalWrite(ACTUATOR_A_PIN, LOW);
-            digitalWrite(ACTUATOR_B_PIN, LOW);
+            setActuators(false, false);
         }
 
     } else {
-        Serial.println("both off");
-        digitalWrite(ACTUATOR_A_PIN, LOW);
-        digitalWrite(ACTUATOR_B_PIN, LOW);
+        setActuators(false, false);
     }
 }
 
@@ -331,59 +365,50 @@ void processPumpInput() {
 
     if (digitalRead(VENT_BUTTON_PIN) == HIGH) {
    
-        digitalWrite(PUMP_A_PIN, HIGH);
-        digitalWrite(PUMP_B_PIN, LOW);
+        setPumps(true, false);
 
     } else if (digitalRead(BLOW_BUTTON_PIN) == HIGH) {
 
-        digitalWrite(PUMP_A_PIN, LOW);
-        digitalWrite(PUMP_B_PIN, HIGH);
+        setPumps(false, true);
 
     } else {
-        digitalWrite(PUMP_A_PIN, LOW);
-        digitalWrite(PUMP_B_PIN, LOW);
+        setPumps(false, false);
     }
 }
 
+
 void processActuatorInput() {
 
-    digitalWrite(PUMP_A_PIN, LOW); //change this to be better 
-    digitalWrite(PUMP_B_PIN, LOW);
+    setPumps(false, false);
 
     if (digitalRead(VENT_BUTTON_PIN) == HIGH) {
-        Serial.println("hi");
-        digitalWrite(ACTUATOR_A_PIN, HIGH);
-        digitalWrite(ACTUATOR_B_PIN, LOW);
+
+        setActuators(true, false);
 
     } else if (digitalRead(BLOW_BUTTON_PIN) == HIGH) {
 
-        digitalWrite(ACTUATOR_A_PIN, LOW);
-        digitalWrite(ACTUATOR_B_PIN, HIGH);
+        setActuators(false, true);
 
     } else {
 
-        digitalWrite(ACTUATOR_A_PIN, LOW);
-        digitalWrite(ACTUATOR_B_PIN, LOW);
+        setActuators(false, false);
     }
 }
 
 void processLED() {
  
   if(blinkInterval == SOLID) {
-      if(!isOn) {
-        digitalWrite(DEPTH_LED_PIN, HIGH);
-        isOn = true;
+      if(!isLedOn) {
+        setLED(true);
       }
   } else {
     currentTime = millis();
   
     if(currentTime > previousTime + blinkInterval) {
-        if(isOn) {
-          digitalWrite(DEPTH_LED_PIN, LOW);
-          isOn = false;
+        if(isLedOn) {
+          setLED(false);
         } else {
-          digitalWrite(DEPTH_LED_PIN, HIGH);
-          isOn = true;
+          setLED(true);
         }
     
         previousTime = currentTime;
@@ -392,24 +417,36 @@ void processLED() {
 }
 
 void turnOffAllDevices() {
-    digitalWrite(ACTUATOR_A_PIN, LOW);
-    digitalWrite(ACTUATOR_B_PIN, LOW);
-    digitalWrite(PUMP_A_PIN, LOW);
-    digitalWrite(PUMP_B_PIN, LOW);
+    setPumps(false, false);
+    setActuators(false, false);
+}
+
+bool canSetup1RunYet = false;
+bool isDoneSettingUp = false;
+
+void setup1() {
+    while(!canSetup1RunYet) delay(5);
+    
+    float before = millis();
+    float now = before;
+    while(!isDoneSettingUp) {
+        now = millis();
+        // 1hz breathing
+        setLEDPWM(127 * (sin(6.28f*now) + 1));
+        delay(10);
+    }
+
 }
 
 void setup() {
     Serial.begin(9600);
-     if(watchdog_caused_reboot()) { delay(5000); }
+    if(watchdog_caused_reboot()) { delay(5000); }
     Wire.setSDA(0);
     Wire.setSCL(1);
     Wire.begin();
 
-    //Wire.setClock(100000);
-    //delay(5000);
 
     Serial.println("hello there");
-    //return;
     
     blinkInterval = FAST;
     previousTime = millis();
@@ -417,21 +454,31 @@ void setup() {
     setPinModes();
     Serial.println("I am done setting pin modes");
 
+    canSetup1RunYet = true;
+    
+
     setupGyro();
     Serial.println("I am done setting up gyro");
 
     setupDepthSensor();
+    // read a value because the first one is sometimes wrong
+    depthSensor.read();
+    depthSensor.depth();
+    
     Serial.println("I am done setting up depth sensor");
 
     setInitialMode();
 
-        watchdog_enable(2000, 1);
+    watchdog_enable(2000, 1);
+
+
 
    Serial.println("I am done setting up");
+   isDoneSettingUp = true;
 }
 
 void loop() {
-        watchdog_update();
+    watchdog_update();
 
     // temporary battery voltage reading thing (NOT CALIBRATED AT ALL!!!!)
     /*int batVoltageReading = analogRead(MAIN_BAT_VOLTAGE_PIN);
@@ -452,10 +499,12 @@ void loop() {
         processActuatorInput();
     }
 
-    processSteering();
-
     processLED();
 
     tickSwitch(&modeSwitch);
     
+}
+
+void loop1() {
+    processSteering();
 }

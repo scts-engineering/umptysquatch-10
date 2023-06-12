@@ -97,6 +97,7 @@ enum BlinkInterval {
 };
 
 enum Mode {
+    NONE,
     AUTO,
     PUMP,
     ACTUATOR
