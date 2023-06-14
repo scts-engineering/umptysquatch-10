@@ -8,6 +8,7 @@
 //#define ENABLE_AUTO_PUMPS
 
 #define DEBUG
+#define USE_WIFI
 
 #define arraylength(x) (sizeof(x) / sizeof((x)[0]))
 #ifdef DEBUG

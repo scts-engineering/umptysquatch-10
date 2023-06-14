@@ -11,9 +11,76 @@
 #include "buttons.h"
 #include "Moving_Average.h"
 
+#ifdef USE_WIFI
+#include <WiFi.h>
+//#include <ESP8266mDNS.h>
+#include <WiFiUdp.h>
+#include <ArduinoOTA.h>
+WiFiClient client;
+WiFiServer server(12241);
+char abuf[128];
+boolean readyForPrint = false;
+#endif
+
 extern "C" {
   #include <hardware/watchdog.h>
+  #include <pico/cyw43_arch.h>
 };
+
+boolean setupWifi() {
+  //delay(5000);
+  Serial.println("starting wifi...");
+      WiFi.mode(WIFI_STA);
+      WiFi.setHostname("u10-ota");
+  WiFi.begin("OpenWrt", "goodbyecenturylink");
+  while (WiFi.waitForConnectResult() != WL_CONNECTED) {
+      Serial.println("wifi connection failed");
+      pinMode(LED_BUILTIN, OUTPUT);
+      digitalWrite(LED_BUILTIN, HIGH);
+      return false;
+  }
+  
+  cyw43_pm_value(CYW43_NO_POWERSAVE_MODE, 20, 1, 1, 1);
+  WiFi.noLowPowerMode();
+
+    ArduinoOTA.onStart([]() {
+    String type;
+    if (ArduinoOTA.getCommand() == U_FLASH) {
+      type = "sketch";
+    } else {  // U_FS
+      type = "filesystem";
+    }
+
+    // NOTE: if updating FS this would be the place to unmount FS using FS.end()
+    Serial.println("Start updating " + type);
+  });
+  ArduinoOTA.onEnd([]() {
+    Serial.println("\nEnd");
+  });
+  ArduinoOTA.onProgress([](unsigned int progress, unsigned int total) {
+    Serial.printf("Progress: %u%%\r", (progress / (total / 100)));
+  });
+  ArduinoOTA.onError([](ota_error_t error) {
+    Serial.printf("Error[%u]: ", error);
+    if (error == OTA_AUTH_ERROR) {
+      Serial.println("Auth Failed");
+    } else if (error == OTA_BEGIN_ERROR) {
+      Serial.println("Begin Failed");
+    } else if (error == OTA_CONNECT_ERROR) {
+      Serial.println("Connect Failed");
+    } else if (error == OTA_RECEIVE_ERROR) {
+      Serial.println("Receive Failed");
+    } else if (error == OTA_END_ERROR) {
+      Serial.println("End Failed");
+    }
+  });
+  ArduinoOTA.begin();
+  Serial.println("Ready");
+  Serial.print("IP address: ");
+  Serial.println(WiFi.localIP());
+  return true;
+}
+
 
 Servo servos[4];
 
@@ -39,6 +106,9 @@ Mode mode;
 boolean pumpMode = true; //always defaults to pump mode for the first time it is put into manual mode
 
 DebouncedSwitch modeSwitch;
+
+
+
 
 float floatArrMean(float arr[], int size) {
     float value;
@@ -304,10 +374,12 @@ void maintainEquilibrium() {
     float roll = (ypr[2] * 180 / M_PI);
     depthSensor.read();
     float depth = depthSensor.depth();
-    Serial.print("Depth: ");
-    Serial.print(depth);
-    Serial.print("   holdDepth: ");
-    Serial.println(holdDepth);
+
+
+    if(!readyForPrint) {
+        sprintf(abuf, "Depth: %.6f\nholdDepth: %.6f\n", depth, holdDepth);
+        readyForPrint = true;
+    }
 
     DepthState isDepthOff;
 
@@ -425,6 +497,7 @@ bool canSetup1RunYet = false;
 bool isDoneSettingUp = false;
 
 void setup1() {
+
     while(!canSetup1RunYet) delay(5);
     
     float before = millis();
@@ -432,14 +505,16 @@ void setup1() {
     while(!isDoneSettingUp) {
         now = millis();
         // 1hz breathing
-        setLEDPWM(127 * (sin(6.28f*now) + 1));
+        setLEDPWM(127 * (sin(5.f*6.28f*now) + 1));
         delay(10);
     }
 
 }
 
 void setup() {
+  #ifndef USE_WIFI
     Serial.begin(9600);
+    #endif
     if(watchdog_caused_reboot()) { delay(5000); }
     Wire.setSDA(0);
     Wire.setSCL(1);
@@ -447,6 +522,8 @@ void setup() {
 
 
     Serial.println("hello there");
+
+
     
     blinkInterval = FAST;
     previousTime = millis();
@@ -455,10 +532,22 @@ void setup() {
     Serial.println("I am done setting pin modes");
 
     canSetup1RunYet = true;
-    
+
+          
+#ifdef USE_WIFI
+    if(setupWifi()) {
+        server.begin();
+    }
+    /*Serial.println(client.connect("192.168.1.162", 12241));
+    if(!client.connected()) Serial.println("no connected to server"); else Serial.println("connected to server");
+    client.setNoDelay(true);*/
+#endif
+
 
     setupGyro();
     Serial.println("I am done setting up gyro");
+
+
 
     setupDepthSensor();
     // read a value because the first one is sometimes wrong
@@ -467,10 +556,12 @@ void setup() {
     
     Serial.println("I am done setting up depth sensor");
 
+
+
+
     setInitialMode();
 
     watchdog_enable(2000, 1);
-
 
 
    Serial.println("I am done setting up");
@@ -478,6 +569,8 @@ void setup() {
 }
 
 void loop() {
+
+
     watchdog_update();
 
     // temporary battery voltage reading thing (NOT CALIBRATED AT ALL!!!!)
@@ -506,5 +599,19 @@ void loop() {
 }
 
 void loop1() {
+
+  if(!client.connected()) { 
+      client = server.available();
+      client.setNoDelay(true);
+  } else if(readyForPrint) {
+      client.print(abuf);
+      readyForPrint = false;
+      client.flush();
+  }
+
+  
+#ifdef USE_WIFI
+    ArduinoOTA.handle();
+#endif
     processSteering();
 }
